@@ -114,6 +114,18 @@ ip_score_long <- function(probabilities, data_outcome, data_long, time_horizon,
 
   if (null_model) {
     predictions <- fit_null(treatment, outcome, predictions, ipt, ipc)
+
+    surv_long <- survSplit(Surv(time, status) ~ ., data_outcome, cut = 1:4)
+    stopifnot(all(data_long$id == surv_long$id))
+    surv_long$iptw <- ipt_visit$weights
+    surv_long$A <- data_long$A
+    surv_long <- surv_long[surv_long$A == 0, ]
+
+    km.0 <- survfit(Surv(tstart,time,status)~1, data=surv_long, weights = iptw)
+    p0 <- 1 - summary(km.0, times = 5)$surv
+    pred0 <- rep(p0, nrow(data_flat))
+
+    predictions <- c(predictions, list("km0" = pred0))
   }
 
   ip_object <- construct_ip_object(

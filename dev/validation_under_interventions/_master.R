@@ -1,5 +1,7 @@
 library(dplyr)
 library(tidyr)
+library(survival)
+
 
 #storage for simulation results
 
@@ -157,6 +159,8 @@ scenario <- 1; cindex_ylim_low <- .48; cindex_ylim_high <- .675; auc_ylim_low <-
 
 
 # dat_sim_cox_scenario1 ---------------------------------------------------
+U=rnorm(n,0,0.1)
+
 
 dat_sim_cox_scenario1 <- function() {
   n.visit=5
@@ -200,7 +204,6 @@ dat_sim_cox_scenario1 <- function() {
   A=matrix(nrow=n,ncol=n.visit)
   L=matrix(nrow=n,ncol=n.visit)
 
-  U=rnorm(n,0,0.1)
   L[,1]=rnorm(n,U,1)
   A[,1]=rbinom(n,1,expit(gamma.0+gamma.L*L[,1]))
   for(k in 2:n.visit){
@@ -538,7 +541,7 @@ ipscore_results_0 <- ip_score_long(
   time_horizon = 5,
   treatment_formula = A ~ A_lag_1 * L,
   treatment_of_interest = rep(0, 5),
-  null_model = FALSE,
+  null_model = TRUE,
   metrics = c("auc", "brier", "scaled_brier", "oeratio")
 )
 

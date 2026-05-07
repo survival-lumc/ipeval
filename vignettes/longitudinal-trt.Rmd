@@ -35,9 +35,10 @@ alpha_A <- -0.5
 alpha_L <- 0.5
 alpha_U <- 0.5
 
+U <- rnorm(n, 0, 0.1)
+
 simulate_longitudinal <- function(n, fix_trt = NULL, seed = 123) {
   set.seed(seed)
-  U <- rnorm(n, 0, 0.1)
 
   A <- matrix(nrow = n, ncol = n_visits)
   L <- matrix(nrow = n, ncol = n_visits)
