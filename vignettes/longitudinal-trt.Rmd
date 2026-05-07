@@ -258,6 +258,8 @@ Reproduce results from eTable 7. n = 3000, 1000 simulation runs. Scroll down for
 metrics <- c("oeratio", "auc", "brier", "scaled_brier")
 
 simulation_run <- function(seed) {
+  U <- rnorm(n, 0, 0.1)
+
   df_dev <- simulate_longitudinal(n = 3000, seed = seed)
   df_dev_long <- make_dev_long(df_dev)
   
@@ -272,6 +274,8 @@ simulation_run <- function(seed) {
   risk0 <- models[[1]]
   risk1 <- models[[2]]
 
+  U <- rnorm(n, 0, 0.1)
+  
   df_val <- simulate_longitudinal(n = 3000, seed = seed + 1)
   predicted0 <- risk0(5, df_val$L0)
   predicted1 <- risk1(5, df_val$L0)
@@ -354,7 +358,7 @@ simulation_run <- function(seed) {
   )
 }
 
-results <- lapply(1:1000, simulation_run)
+results <- lapply_progress(1:1000, simulation_run, "")
 results <- Filter(Negate(is.null), results)
 ```
 
