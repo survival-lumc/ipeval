@@ -127,6 +127,7 @@ ip_score_long <- function(probabilities, data_outcome, data_long, time_horizon,
   ip_object <- compute_metrics(ip_object)
 
   ip_object <- add_to_ip_object(ip_object, "quiet", FALSE)
+  ip_object <- add_to_ip_object(ip_object, "treatment_formula", ipt_visit$model)
   return(ip_object)
 }
 
