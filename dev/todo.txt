@@ -1,12 +1,10 @@
 todo
-- CRAN
 - print when stabilized weights
 - longitudinal trts
+- categorical treatments
+- refactor tests
+- test for outputs
 - multiple censoring mechanisms
-- nonbinary treatments?
-- refactor tests?
-- testing when supplying data.table & tibbles instead of data.frames
-
 
 
 - waarom is attr(outcome$observed, "dimnames") NULL? van long iig.
@@ -16,13 +14,6 @@ todo
 
 discuss
 - event/censor ties for cox censoring
-- null model on survival data?
-
-- moeten visits even ver uit elkaar liggen?
-- We gaan er nu van uit dat treatment model op elk visit gelijk is. Het is niet
-    ondenkbaar dat er voor verschillende visits verschillende treatment modellen
-    nodig zijn. Misschien kan dit al, door indicators in treatment model te doen?
-- Zijn de IPT-weights relevant van mensen die niet de treatment of interest hebben?
 - time dependent confounders effect op censoring?
 - null model is dat gewoon weighted mean van outcome in pseudopop?
 - wat is truth als we simuleren dat iedereen treatment krijgt? Omdat L[i] afhangt
