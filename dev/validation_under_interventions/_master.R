@@ -636,7 +636,7 @@ wCDauct0 <- wCD_AUCt(time=dat.val$T.cens.0, status=dat.val$D.cens.0, risk=risk0_
 disc_auct[i,4] <- wCDauct0$AUCt$AUC[wCDauct0$AUCt$time==4.9999]
 
 
-expect_equal(disc_auct[i,4], ipscore_results_0$score$auc[[1]])
+expect_equal(disc_auct[i,4], ipscore_results_0$score$auc[[2]])
 
 
 
@@ -669,9 +669,15 @@ brier_raw[i,3] <- Brier(dat.val$T.cens.0, dat.val$D.cens.0, risk=risk0_exp[,5], 
 brier_ipa[i,3] <- ipa(dat.val$T.cens.0, dat.val$D.cens.0, risk=risk0_exp[,5], seq.time=4.9999, weights=dat.val$ipw0.comb)
 
 brier_raw
-expect_equal(brier_raw[i,3], ipscore_results_0$score$brier[[1]])
-expect_equal(brier_ipa[i,3], ipscore_results_0$score$scaled_brier[[1]])
+expect_equal(brier_raw[i,3], ipscore_results_0$score$brier[[2]])
+expect_equal(brier_ipa[i,3], ipscore_results_0$score$scaled_brier[[2]])
 
+brier_ipa[i, 1]
+
+
+mean(dat.cf$D.A0)
+ipscore_results_0$predictions$km0[[1]]
+ipscore_results_0$predictions$`null model`[[1]]
 
 # calibration -------------------------------------------------------------
 

@@ -435,8 +435,8 @@ fit_null <- function(score_treatment, score_outcome, score_predictions,
   n <- length(score_outcome$observed)
   if (score_outcome$type == "binary") {
     null_prediction <- stats::weighted.mean(
-      score_outcome$observed[pseudo_ids],
-      score_ipt$weights[pseudo_ids]
+      x = score_outcome$observed[pseudo_ids],
+      w = score_ipt$weights[pseudo_ids]
     )
   } else {
     # fit null model in a pseudopopuluation where everyone had treatment of
@@ -444,8 +444,8 @@ fit_null <- function(score_treatment, score_outcome, score_predictions,
     uncensor_ids <- score_ipc$weights != 0
     cf_ids <- pseudo_ids & uncensor_ids
     null_prediction <- stats::weighted.mean(
-      score_outcome$status_at_horizon[cf_ids],
-      score_ipt$weights[cf_ids]*score_ipc$weights[cf_ids]
+      x = score_outcome$status_at_horizon[cf_ids],
+      w = score_ipt$weights[cf_ids]*score_ipc$weights[cf_ids]
     )
   }
   null_preds <- rep(null_prediction, n)

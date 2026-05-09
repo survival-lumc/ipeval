@@ -219,7 +219,8 @@ test_that("ip_score metrics equal to unobserved CF metrics, binary outcome", {
     outcome = Y,
     treatment_formula = A ~ L,
     treatment_of_interest = 0,
-    null_model = FALSE
+    null_model = FALSE,
+    metrics = c("auc", "brier", "oeratio", "scaled_brier")
   )
 
   Y0_predicted <- predict_CF(model, data, "A", 0)
@@ -227,13 +228,21 @@ test_that("ip_score metrics equal to unobserved CF metrics, binary outcome", {
     list(Y0_predicted),
     formula = Y0 ~ 1,
     data = data,
-    null.model = F
+    null.model = T
   )
+
+  brier_model <- score$Brier$score[[2, "Brier"]]
+  brier_null <- score$Brier$score[[1, "Brier"]]
+  scaled_brier <- (1 - brier_model/brier_null)*100
+
+
   score$oe <- mean(data$Y0)/mean(Y0_predicted)
 
+
   expect_equal(unname(ip_score$score$auc), score$AUC$score$AUC, tolerance = 0.01)
-  expect_equal(unname(ip_score$score$brier), score$Brier$score$Brier, tolerance = 0.01)
+  expect_equal(unname(ip_score$score$brier), score$Brier$score$Brier[[2]], tolerance = 0.01)
   expect_equal(unname(ip_score$score$oeratio), score$oe, tolerance = 0.01)
+  expect_equal(unname(ip_score$score$scaled_brier), scaled_brier)
 })
 
 test_that("ip_score metrics equal to unobserved CF metrics, surv, uncensored", {

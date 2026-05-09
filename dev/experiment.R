@@ -177,6 +177,10 @@ simulation_run <- function(seed) {
     null_model = TRUE
   )
 
+  brier_estimated <- score0$score$scaled_brier[[2]]
+
+
+
   nullwm <- score0$predictions$`null model`[[1]]
   nullkm <- score0$predictions$km0[[1]]
 
@@ -184,6 +188,9 @@ simulation_run <- function(seed) {
   # treatment is set fixed to never or always to estimate 'truth'.
   df_true0 <- simulate_longitudinal(n = 3000, fix_trt = 0, seed = seed + 1)
   nulltrue <- mean(df_true0$status)
+
+  observed_score(score0$predictions$`null model`, df_true0,
+                 outcome = status, metrics = metrics)
 
   return(list("biaswm" = nullwm - nulltrue,
               "biaskm" = nullkm - nulltrue))
