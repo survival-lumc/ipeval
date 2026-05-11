@@ -18,6 +18,8 @@
 #'   the name of a numeric column in data.
 #' @param metrics A character vector specifying which performance metrics to be
 #'   computed. Options are c("auc", "brier", "oeratio", "calplot").
+#' @param null_model If TRUE fit a risk prediction model which ignores the
+#'   covariates and predicts the same value for all subjects.
 #'
 #' @returns Performance metrics in the observed dataset.
 #' @export
@@ -40,7 +42,8 @@
 #' )
 
 observed_score <- function(object, data, outcome,
-                    metrics = c("auc", "brier", "oeratio", "calplot")) {
+                    metrics = c("auc", "brier", "oeratio", "calplot"),
+                    null_model = FALSE) {
 
   # make a list of risk predictions
   object <- make_list_if_not_list(object)
@@ -62,11 +65,20 @@ observed_score <- function(object, data, outcome,
     "treatment_of_interest" = 1
   )
 
+  score_outcome <- extract_outcome(data, substitute(outcome))
+
+  score_ipt <- list("weights" = rep(1, nrow(data)))
+
+  if (null_model) {
+    score_predictions <- fit_null(score_trt, score_outcome,
+                                  score_predictions, score_ipt, NULL)
+  }
+
   ip_object <- construct_ip_object(
-    outcome = extract_outcome(data, substitute(outcome)),
+    outcome = score_outcome,
     treatment = score_trt,
     predictions = score_predictions,
-    ipt = list("weights" = rep(1, nrow(data))),
+    ipt = score_ipt,
     ipc = NULL,
     metrics = metrics
   )
