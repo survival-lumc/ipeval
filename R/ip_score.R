@@ -254,9 +254,11 @@ construct_ip_object <- function(outcome, treatment, predictions, ipt, ipc,
 }
 
 add_to_ip_object <- function(ip_object, name, value, after = length(ip_object)) {
+  old_class <- class(ip_object)
+
   ip_object <- append(ip_object, list(value), after = after)
   names(ip_object)[after+1] <- name
-  class(ip_object) <- "ip_score"
+  class(ip_object) <- old_class
   return(ip_object)
 }
 

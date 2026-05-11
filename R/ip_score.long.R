@@ -116,7 +116,7 @@ ip_score_long <- function(probabilities, data_outcome, data_long, time_horizon,
     predictions <- fit_null(treatment, outcome, predictions, ipt, ipc)
   }
 
-  ip_object <- construct_ip_object(
+  ip_object <- construct_long_ip_object(
     outcome = outcome,
     treatment = treatment,
     predictions = predictions,
@@ -142,43 +142,17 @@ faithful_to_trt <- function(data_long, treatment_of_interest) {
   )
 }
 
+construct_long_ip_object <- function(outcome, treatment, predictions, ipt, ipc,
+                                     metrics) {
+  ip_object <- construct_ip_object(
+    outcome = outcome,
+    treatment = treatment,
+    predictions = predictions,
+    ipt = ipt,
+    ipc = ipc,
+    metrics = metrics
+  )
+  class(ip_object) <- c("ip_score_long", "ip_score")
+  ip_object
+}
 
-
-# ip_score.long <- function(predictions, data_long, outcome,
-#                           treatment_formula, treatment_of_interest,
-#                           metrics = c("auc", "brier", "oeratio", "calplot"),
-#                           time_horizon, null.model = TRUE, id = id) {
-#
-#
-#
-# #   data_long <- copy(data_long)
-# #
-# #   ipt <- ipt_weights(data_long, treatment_formula)
-# #
-# #   data_long[, ipt.visit := ipt$weights]
-# #   data_long[, iptw := cumprod(ipt.visit), by = id]
-# #   data_long[, trt := all(A == treatment_of_interest[seq_len(.N)]), by = id]
-# #   data_flat <- data_long[, .SD[.N], by = id]
-# #   cfscore <- ip_score(predictions, data_flat, substitute(outcome),
-# #                      treatment_formula = trt ~ 1, treatment_of_interest = 1,
-# #                      metrics = metrics, time_horizon = time_horizon,
-# #                      iptw = data_flat$iptw, ipcw = rep(1, nrow(data_flat)),
-# #                      quiet = TRUE)
-# #
-#
-#
-#
-#   ipt.visits <- ipt_weights(data_long, treatment_formula)
-#   ipt.cumprod <- tapply(ipt.visit, )
-#
-#   construct_ip_object(
-#     outcome = ,
-#     treatment =,
-#     predictions = ,
-#     ipt =,
-#     ipc = ,
-#     metrics =
-#   )
-#
-#   return(cfscore)
-# }
