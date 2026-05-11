@@ -7,6 +7,7 @@ test_that("ipscore long works", {
   iptw <- ipt_weights(df_dev_long, A ~ L * A_lag_1)$weights
 
   coxmsm <- fit_long_cox_model(data_long = df_dev_long, iptw)
+  badmodel <- glm(status ~ A0 + L0, data = df_dev, family = "binomial")
 
   df_val <- generate_long_data_cox(n_val, seed = 2)
   df_cf0 <- generate_long_data_cox(n_val, seed = 2, Ai = function(i) 0)
@@ -19,9 +20,10 @@ test_that("ipscore long works", {
   df_val_long <- add_lag_terms(df_val_long, "A")
 
 
-  risk_untreated <- risk_under_0(coxmsm, 5, df_val$L0)
-  risk_treated <- risk_under_1(coxmsm, 5, df_val$L0)
-
+  risk_0 <- risk_under_0(coxmsm, 5, df_val$L0)
+  risk_1 <- risk_under_1(coxmsm, 5, df_val$L0)
+  risk_bad_0 <- predict_CF(badmodel, df_val, "A0", 0)
+  risk_bad_1 <- predict_CF(badmodel, df_val, "A0", 1)
   risk_random <- runif(n_val)
   always_0 <- rep(0, n_val)
   always_1 <- rep(1, n_val)
@@ -29,7 +31,8 @@ test_that("ipscore long works", {
 
   metrics <- c("auc", "brier", "oeratio")
 
-  models <- list(risk_untreated, risk_treated, risk_random, always_0, always_1)
+  models <- list(risk_0, risk_1, risk_bad_0, risk_bad_1, risk_random,
+                 always_0, always_1)
 
   score0 <- ip_score_long(
     probabilities = models,
@@ -55,10 +58,23 @@ test_that("ipscore long works", {
   )
   score1_true <- observed_score(models, df_cf1, df_cf1$status, metrics, TRUE)
 
-  # expect_equal(score0$score, score0_true$score)
-  # expect_equal(score1$score, score1_true$score)
   expect_equal(score0$score, score0_true$score, tolerance = 0.01)
   expect_equal(score1$score, score1_true$score, tolerance = 0.01)
+  # why does risk random fail?
+
+  quantile(score0$ipt$weights[score0$treatment$observed == score0$treatment$treatment_of_interest],
+           c(0.99))
+
+  quantile(score1$ipt$weights[score1$treatment$observed == score1$treatment$treatment_of_interest],
+           c(0.99))
 
 
+  summary(
+    score0$ipt$weights[score0$treatment$observed == score0$treatment$treatment_of_interest]
+  )
+  sum(score0$treatment$observed == score0$treatment$treatment_of_interest)
+  summary(
+    score1$ipt$weights[score1$treatment$observed == score1$treatment$treatment_of_interest]
+  )
+  sum(score1$treatment$observed == score1$treatment$treatment_of_interest)
 })
