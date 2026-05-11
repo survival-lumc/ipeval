@@ -125,7 +125,7 @@ ip_score_long <- function(probabilities, data_outcome, data_long, time_horizon,
     p0 <- 1 - summary(km.0, times = 5)$surv
     pred0 <- rep(p0, nrow(data_flat))
 
-    predictions <- c(predictions, list("km0" = pred0))
+    predictions <- c(list("km0" = pred0), predictions)
   }
 
   ip_object <- construct_ip_object(

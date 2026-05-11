@@ -24,55 +24,11 @@ calib_risk0_group<-array(dim=c(Nsim,10,5))
 calib_risk1_group<-array(dim=c(Nsim,10,5))
 
 #discrimination
-disc_cindex<-matrix(nrow=Nsim,ncol=10)
 disc_auct<-matrix(nrow=Nsim,ncol=10)
 
 #overall prediction error
 brier_raw <- matrix(nrow=Nsim, ncol=8)
 brier_ipa <- matrix(nrow=Nsim, ncol=8)
-
-#---------------
-#function for c-index with inverse prob weight option, allowing tied event times
-
-c_index_ties <- function(time, status, risk, weightmatrix=NULL, tau)
-  #Input:
-  # time: event/censoring times
-  # status: event indicators
-  # risk: vector of risk probabilities by time horizon (typically tau) for each individual.
-  # weightmatrix: matrix with ipc weights. Rows are subjects, columns are unique event time points (ordered)
-  # tau: truncation time point, calculate c-index from zero up to (and including) tau
-  #Output:
-  # c-index
-{
-  tt <- sort(unique(time[status == 1 & time <= tau]))
-  if(is.null(weightmatrix))
-  {
-    weightmatrix=matrix(1,nrow=length(time),ncol = length(tt))
-  }
-  nt <- length(tt)            #number of unique event time points
-  x <- risk
-  numsum <- denomsum <- 0
-  for (i in 1:nt)                   #loop over unique event time points
-  {
-    ti <- tt[i]
-    n1 <- intersect(which(time==ti) ,which(status==1)) #indices of cases at this time point
-    n0 <- union(which(time>ti), intersect(which(time==ti),which(status==0)))  	#indices controls at this time point (patients with event time >ti plus patients censored at ti)
-    nn1 <- length(n1)                 #number of cases
-    nn0 <- length(n0)                 #number of controls
-    x <- risk
-    for (k in 1:nn1)                  #loop over the cases
-    {
-      xi <- x[n1][k] # risk of the k'th case at time point ti
-      numsum  <- numsum + weightmatrix[n1,i][k] * (x[n0]<xi)%*%weightmatrix[n0,i] + 0.5 * weightmatrix[n1,i][k] * (x[n0] == xi) %*% weightmatrix[n0,i]
-      denomsum <- denomsum + weightmatrix[n1,i][k]*sum(weightmatrix[n0,i])
-
-    }
-
-  }
-  cindex <- numsum/denomsum
-  return(cindex)
-}
-
 
 #---------------
 #function for cumulative dynamic AUCt with ipc weights
@@ -137,7 +93,6 @@ Brier <- function(time, status, risk, seq.time, weights=rep(1, length(time)))
 
   # original code uses 1/length(time), we use sum(weights) as its slightly more
   # accurate
-  print(sum(weights[uncensored]))
   return(1/(sum(weights[uncensored]))*sum((risk[uncensored]-status[uncensored])^2*weights[uncensored]))
 }
 
@@ -546,17 +501,18 @@ ipscore_results_0 <- ip_score_long(
 )
 
 ipscore_results_1 <- ip_score_long(
-  probabilities = risk0_exp[,5],
+  probabilities = risk1_exp[,5],
   data_outcome = dat.val_outcome,
   data_long = dat.val_long,
   time_horizon = 5,
   treatment_formula = A ~ A_lag_1 * L,
   treatment_of_interest = rep(1, 5),
-  null_model = FALSE,
+  null_model = TRUE,
   metrics = c("auc", "brier", "scaled_brier", "oeratio")
 )
 
-
+100 * (1 - ipscore_results_0$score$brier[[3]] / ipscore_results_0$score$brier[[2]])
+100 * (1 - ipscore_results_0$score$brier[[3]] / ipscore_results_0$score$brier[[1]])
 # validation under interventions metrics ----------------------------------
 
 
@@ -636,7 +592,7 @@ wCDauct0 <- wCD_AUCt(time=dat.val$T.cens.0, status=dat.val$D.cens.0, risk=risk0_
 disc_auct[i,4] <- wCDauct0$AUCt$AUC[wCDauct0$AUCt$time==4.9999]
 
 
-expect_equal(disc_auct[i,4], ipscore_results_0$score$auc[[2]])
+expect_equal(disc_auct[i,4], ipscore_results_0$score$auc[[3]])
 
 
 
@@ -669,8 +625,8 @@ brier_raw[i,3] <- Brier(dat.val$T.cens.0, dat.val$D.cens.0, risk=risk0_exp[,5], 
 brier_ipa[i,3] <- ipa(dat.val$T.cens.0, dat.val$D.cens.0, risk=risk0_exp[,5], seq.time=4.9999, weights=dat.val$ipw0.comb)
 
 brier_raw
-expect_equal(brier_raw[i,3], ipscore_results_0$score$brier[[2]])
-expect_equal(brier_ipa[i,3], ipscore_results_0$score$scaled_brier[[2]])
+expect_equal(brier_raw[i,3], ipscore_results_0$score$brier[[3]])
+expect_equal(brier_ipa[i,3], ipscore_results_0$score$scaled_brier[[3]])
 
 brier_ipa[i, 1]
 
