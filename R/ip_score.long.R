@@ -110,6 +110,8 @@ ip_score_long <- function(probabilities, data_outcome, data_long, time_horizon,
   ipt <- get_iptw(iptw = data_flat$ipt)
   ipc <- get_ipcw(ipcw = rep(1, nrow(data_flat)))
 
+  # ipt$weights <- threshold_weights(ipt$weights, 0.99)
+
   predictions <- get_predictions(probabilities, data_flat)
 
   if (null_model) {
@@ -156,3 +158,8 @@ construct_long_ip_object <- function(outcome, treatment, predictions, ipt, ipc,
   ip_object
 }
 
+threshold_weights <- function(weights, quantile_bound) {
+  upper_bound <- quantile(weights, quantile_bound)[[1]]
+  weights[weights > upper_bound] <- upper_bound
+  return(weights)
+}

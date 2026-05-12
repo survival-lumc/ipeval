@@ -9,9 +9,9 @@ test_that("ipscore long works", {
   coxmsm <- fit_long_cox_model(data_long = df_dev_long, iptw)
   badmodel <- glm(status ~ A0 + L0, data = df_dev, family = "binomial")
 
-  df_val <- generate_long_data_cox(n_val, seed = 2)
-  df_cf0 <- generate_long_data_cox(n_val, seed = 2, Ai = function(i) 0)
-  df_cf1 <- generate_long_data_cox(n_val, seed = 2, Ai = function(i) 1)
+  df_val <- generate_long_data_cox(n_val, seed = 3)
+  df_cf0 <- generate_long_data_cox(n_val, seed = 3, Ai = function(i) rep(0, n_val))
+  df_cf1 <- generate_long_data_cox(n_val, seed = 3, Ai = function(i) rep(1, n_val))
 
   df_val_outcome <- df_val[, c("id", "time", "status")]
   df_val_long <- wide_to_long(df_val, "id", list(A = paste0("A", 0:4),
@@ -27,12 +27,17 @@ test_that("ipscore long works", {
   risk_random <- runif(n_val)
   always_0 <- rep(0, n_val)
   always_1 <- rep(1, n_val)
+  always_truth_under_0 <- df_cf0$status
+  always_wrong_under_0 <- 1-df_cf0$status
+  always_truth_under_1 <- df_cf1$status
+  always_wrong_under_1 <- 1-df_cf1$status
 
 
-  metrics <- c("auc", "brier", "oeratio")
+  metrics <- c("auc", "brier", "oeratio", "scaled_brier")
 
   models <- list(risk_0, risk_1, risk_bad_0, risk_bad_1, risk_random,
-                 always_0, always_1)
+                 always_0, always_1, always_truth_under_0, always_wrong_under_0,
+                 always_truth_under_1, always_wrong_under_1)
 
   score0 <- ip_score_long(
     probabilities = models,
@@ -60,21 +65,5 @@ test_that("ipscore long works", {
 
   expect_equal(score0$score, score0_true$score, tolerance = 0.01)
   expect_equal(score1$score, score1_true$score, tolerance = 0.01)
-  # why does risk random fail?
 
-  quantile(score0$ipt$weights[score0$treatment$observed == score0$treatment$treatment_of_interest],
-           c(0.99))
-
-  quantile(score1$ipt$weights[score1$treatment$observed == score1$treatment$treatment_of_interest],
-           c(0.99))
-
-
-  summary(
-    score0$ipt$weights[score0$treatment$observed == score0$treatment$treatment_of_interest]
-  )
-  sum(score0$treatment$observed == score0$treatment$treatment_of_interest)
-  summary(
-    score1$ipt$weights[score1$treatment$observed == score1$treatment$treatment_of_interest]
-  )
-  sum(score1$treatment$observed == score1$treatment$treatment_of_interest)
 })

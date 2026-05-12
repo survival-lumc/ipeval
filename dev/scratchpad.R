@@ -1,50 +1,55 @@
 library(survival)
 
-n <- 10000
+n <- 1000000
 
-data <- data.frame(id = 1:n)
-data$L <- rnorm(n)
-data$A <- rbinom(n, 1, plogis(2*data$L))
-data$P <- rnorm(n)
-data$Z <- runif(n)
-data$Y0 <- rbinom(n, 1, plogis(0.5 + data$L + 1.25 * data$P))
-data$Y1 <- rbinom(n, 1, plogis(0.5 + data$L + 1.25 * data$P - 0.9*data$A))
-data$Y <- ifelse(data$A == 1, data$Y1, data$Y0)
-data$time <- simulate_time_to_event(n, 0.05, 0.5*data$A + data$Z)
+simulate_data <- function(
+    n, seed, A = function() {rbinom(n, 1, plogis(0.5+2*L))}
+  ) {
+  set.seed(seed)
+  L <- rnorm(n)
+  trt <- A()
+  set.seed(seed + 1)
+  P <- rnorm(n)
+  Y0 <- rbinom(n, 1, plogis(0.5 + L + 1.25 * P))
+  Y1 <- rbinom(n, 1, plogis(0.5 + L + 1.25 * P - 0.9))
+  Y <- ifelse(trt == 1, Y1, Y0)
+  data <- data.frame(id = 1:n, L, A = trt, P, Y, Y0, Y1)
+  return(data)
+}
 
-data$status <- 1
+df_dev <- simulate_data(1000, 1)
+df_val <- simulate_data(n, 2)
+df_cf0 <- simulate_data(n, 2, A = function() rep(0, n))
+df_cf1 <- simulate_data(n, 2, A = function() rep(1, n))
 
-
-trt_model <- glm(A ~ L, family = "binomial", data = data)
+trt_model <- glm(A ~ L, family = "binomial", data = df_dev)
 propensity_score <- predict(trt_model, type = "response")
-data$iptw <- 1 / ifelse(data$A == 1, propensity_score, 1 - propensity_score)
-causal_model <- glm(Y ~ A + P, family = "binomial", data = data, weights = iptw)
-naive_model <- glm(Y ~ 1, family = "binomial", data = data)
+df_dev$iptw <- 1 / ifelse(df_dev$A == 1, propensity_score, 1 - propensity_score)
 
+causal_model <- glm(Y ~ A + P, family = "binomial", data = df_dev, weights = iptw)
+naive_model <- glm(Y ~ A + P, family = "binomial", data = df_dev)
+model_P <- glm(Y ~ P, family = "binomial", data = df_dev)
+always0 <- rep(0, n)
+always1 <- rep(1,n)
+random <- runif(n)
 
-cox <- coxph(Surv(time, status) ~ A + Z, data = data)
+models <- list(
+  "naive" = naive_model,
+  "causal" = causal_model,
+  "modelp" = model_P,
+  "always0" = always0,
+  "always1" = always1,
+  "random" = random
+)
+metrics <- c("auc", "brier", "oeratio")
 
-cox |> str()
+score0 <-ip_score(models, df_val, Y, A ~ L, 0, quiet = TRUE, metrics = metrics)
+observed0 <- observed_score(models, df_cf0, Y, null_model = TRUE, metrics = metrics)
 
-cox$coefficients
+expect_equal(score0$score, observed0$score, tolerance = 0.01)
 
+score1 <-ip_score(models, df_val, Y, A ~ L, 1, quiet = TRUE, metrics = metrics)
+observed1 <- observed_score(models, df_cf1, Y, null_model = TRUE, metrics = metrics)
 
-score <-ip_score(list(naive_model, causal_model), data, Y, A ~ L, 0)
+expect_equal(score1$score, observed1$score, tolerance = 0.01)
 
-score$ipt$weights[data$A == 1] <- NA
-score
-ip_score(list(naive_model, causal_model), data, Y, A ~ L, 0, iptw = score$ipt$weights)
-
-
-score
-
-bs <- ip_score(list(naive_model, causal_model), data, Y, A ~ L, 0, bootstrap = 10)
-
-
-ips <- ip_score(causal_model, data, Surv(time, status), A ~ L, 0, time_horizon = 5)
-
-ips$ipc
-
-print_model(naive_model)
-
-print_model(cox)

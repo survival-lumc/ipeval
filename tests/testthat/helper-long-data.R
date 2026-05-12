@@ -29,19 +29,27 @@ generate_long_data_cox <- function(
     }
     ) {
 
-  set.seed(seed)
-
   L <- matrix(nrow = n, ncol = n_visits)
   A <- matrix(nrow = n, ncol = n_visits)
   time <- rep(NA, n)
   status <- rep(NA, n)
 
+  set.seed(seed)
   U <- U()
 
   for (i in 1:n_visits) {
+    # i have to reset seed every time, because L, A, coxLP may be deterministic
+    # or a random process. if its random, then future random draws are different
+    # if it were deterministic. This makes sure that setting trt deterministically
+    # to 0 will make sure outcomes remain consistent
+    set.seed(seed + i*100 + 1)
+
     L[, i] <- Li(i)
+
+    set.seed(seed + i*100 + 2)
     A[, i] <- Ai(i)
 
+    set.seed(seed + i*100 + 3)
     new.t <- simulate_time_to_event(
       n = n,
       constant_baseline_haz = 1,
