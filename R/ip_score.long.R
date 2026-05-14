@@ -11,7 +11,9 @@
 #' @export
 wide_to_long <- function(df, baseline_variables, wide_variables, visit_times,
                          outcome_times) {
-  # we sometimes want a time dependent variable to be available in all rows too
+  # we sometimes want a specific time dependent variable to be available in all
+  # rows too. I.e. L0 may be important at all time points.
+  # we have to remove it first, then add it back later
   both_i <- baseline_variables %in% unlist(wide_variables)
   both_vars <- baseline_variables[both_i]
   baseline_variables <- baseline_variables[!both_i]
