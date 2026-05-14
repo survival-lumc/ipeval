@@ -72,9 +72,18 @@ test_that("ipscore long results vs validation under interventions paper", {
   # https://github.com/survival-lumc/Validation_Under_Interventions
   # Cox model, scenario 1
 
+  set.seed(123)
   # code is messy, but copied from github, adapted where necessary
 
   #storage for simulation results
+
+  n <- 10000
+  # larger sample than original simulation, for more accurate weighting
+  # model. I specify the weighting formula as one expression (A ~ Alag1 * L)
+  # which works for this simulation, where patients that are treated once
+  # remain treated forever. Original implementation fits 2 models, one for
+  # untreated and one for treated. Both methods are valid. Larger n ensures
+  # less difference between the two.
 
   Nsim <- 1
   #descriptives
@@ -180,7 +189,7 @@ test_that("ipscore long results vs validation under interventions paper", {
     brier0 <- Brier(time, status, rep(nullrisk,length(time)), seq.time, weights=weights)
     return((brier0-brier1)/brier0*100)
   }
-  n <- 3000
+
   scenario <- 1; cindex_ylim_low <- .48; cindex_ylim_high <- .675; auc_ylim_low <- 0.54; auc_ylim_high <- 0.75; calib_lim_low <- 0.1; calib_lim_high <- 0.9; calib_risk_lim_high <- 0.8 ;calib_events_lim_high <- (n/1000)*1300; model = " Cox model"
 
 
@@ -320,8 +329,8 @@ test_that("ipscore long results vs validation under interventions paper", {
                     Llag4 = tidyr::replace_na(Llag4,0))
 
     #baseline L
-    dat.long=dat.long %>%
-      dplyr::group_by(id) %>%
+    dat.long=dat.long |>
+      dplyr::group_by(id) |>
       dplyr::mutate(L.baseline = dplyr::first(L))
 
     return(list(dat, dat.long))
@@ -510,14 +519,14 @@ test_that("ipscore long results vs validation under interventions paper", {
   dat.long.val$wt0=1-pred.wt0
 
   #Obtain the IPW at each time using cumulative product of 1/wt up to that time
-  dat.long.val = dat.long.val %>%
-    dplyr::group_by(id) %>%
+  dat.long.val = dat.long.val |>
+    dplyr::group_by(id) |>
     dplyr::mutate(ipw0=1/cumprod(wt0))
 
   #Now impose the artificial censoring when people deviate from the 'never treated' strategy
 
-  dat.long.val = dat.long.val %>%
-    dplyr::group_by(id) %>%
+  dat.long.val = dat.long.val |>
+    dplyr::group_by(id) |>
     dplyr::mutate(A.baseline=dplyr::first(A))
 
   dat.long.val$in.dat.0 = (dat.long.val$A==0)
@@ -526,7 +535,7 @@ test_that("ipscore long results vs validation under interventions paper", {
   #weighted Kaplan-Meier - using unstabilized weights
   km.0=survival::survfit(
     survival::Surv(time,time.stop,event)~1,
-    data=dat.long.val %>% dplyr::filter(in.dat.0==1),
+    data=dat.long.val |> dplyr::filter(in.dat.0==1),
     weights = ipw0
   )
   step.risk0.obs=stepfun(km.0$time,c(1,km.0$surv))#step function giving survival probability at any time
@@ -550,8 +559,8 @@ test_that("ipscore long results vs validation under interventions paper", {
   #Obtain the IPW at each time (which is the same at each time here)
   dat.long.val$wt1 = 0
   dat.long.val$wt1[dat.long.val$visit==1] = 1/pred.wt1.baseline
-  dat.long.val = dat.long.val %>%
-    dplyr::group_by(id) %>%
+  dat.long.val = dat.long.val |>
+    dplyr::group_by(id) |>
     dplyr::mutate(ipw1=sum(wt1))
 
   #Now impose the artificial censoring when people deviate from the 'always treated' strategy
@@ -562,7 +571,7 @@ test_that("ipscore long results vs validation under interventions paper", {
   #weighted Kaplan-Meier
   km.1=survival::survfit(
     survival::Surv(time,time.stop,event)~1,
-    data=dat.long.val %>% dplyr::filter(in.dat.1==1),
+    data=dat.long.val |> dplyr::filter(in.dat.1==1),
     weights = ipw1)
   step.risk1.obs=stepfun(km.1$time,c(1,km.1$surv))#step function giving survival probability at any time
 
@@ -611,7 +620,7 @@ test_that("ipscore long results vs validation under interventions paper", {
   # note this step takes few seconds computation time (dependent on n)
   dat.0.split <- survival::survSplit(
     Surv(time,time.stop,event) ~.,
-    data = dat.long.val %>% dplyr::filter(in.dat.0==1),
+    data = dat.long.val |> dplyr::filter(in.dat.0==1),
     cut = event.times.0)
 
   # calculate weights for standard censoring at the end time points
@@ -623,9 +632,9 @@ test_that("ipscore long results vs validation under interventions paper", {
   # construct weights matrix needed for cindex / auct 'never treated'
   # select the weights at event time points + make sure subjects who are censored before the first event time point are kept in the dataset
   # put weights in wide format
-  dat.0.wide<- dat.0.split %>%
-    dplyr::filter(time.stop %in% event.times.0 | (time.stop < min(event.times.0))) %>%
-    dplyr::select(c("id","time.stop","ipw.comb")) %>%
+  dat.0.wide<- dat.0.split |>
+    dplyr::filter(time.stop %in% event.times.0 | (time.stop < min(event.times.0))) |>
+    dplyr::select(c("id","time.stop","ipw.comb")) |>
     tidyr::spread(time.stop, ipw.comb)
 
   # subjects with censoring time before first event time should not add a row but not a column to the weightsmatrix (only columns for event time points are needed)
@@ -689,7 +698,7 @@ test_that("ipscore long results vs validation under interventions paper", {
   # note this step takes few seconds computation time (dependent on n)
   dat.1.split <- survival::survSplit(
     Surv(time,time.stop,event) ~.,
-    data = dat.long.val %>% dplyr::filter(in.dat.1==1),
+    data = dat.long.val |> dplyr::filter(in.dat.1==1),
     cut = event.times.1
   )
 
@@ -702,9 +711,9 @@ test_that("ipscore long results vs validation under interventions paper", {
   # construct weights matrix needed for cindex / auct 'never treated'
   # select the weights at event time points + make sure subjects who are censored before the first event time point are kept in the dataset
   # put weights in wide format
-  dat.1.wide<- dat.1.split %>%
-    dplyr::filter(time.stop %in% event.times.1 | (time.stop < min(event.times.1))) %>%
-    dplyr::select(c("id","time.stop","ipw.comb")) %>%
+  dat.1.wide<- dat.1.split |>
+    dplyr::filter(time.stop %in% event.times.1 | (time.stop < min(event.times.1))) |>
+    dplyr::select(c("id","time.stop","ipw.comb")) |>
     tidyr::spread(time.stop, ipw.comb)
 
   # subjects with censoring time before first event time should not add a column to the weightsmatrix (only weights at event time points are needed)
@@ -713,8 +722,8 @@ test_that("ipscore long results vs validation under interventions paper", {
 
   # the above weights matrix is only for people with at least A0=0. Expand it so that it has rows of NA for people in who are directly censored at t=0
   wt_matrix1 <- matrix(nrow=n,ncol=ncol(dat.1.wide))
-  ids.1 <- dat.long.val %>%
-    dplyr::filter(A==1 & time==0) %>%
+  ids.1 <- dat.long.val |>
+    dplyr::filter(A==1 & time==0) |>
     dplyr::pull("id")
   wt_matrix1[ids.1,] <- dat.1.wide
 
@@ -725,60 +734,84 @@ test_that("ipscore long results vs validation under interventions paper", {
   wCDauct1 <- wCD_AUCt(time=dat.val$T.cens.1, status=dat.val$D.cens.1, risk=risk1_exp[,5], plot = FALSE, weightmatrix = wt_matrix1, seq.time=4.9999)
   disc_auct[i,8] <- wCDauct1$AUCt$AUC[wCDauct1$AUCt$time==4.9999]
 
+  # Brier -------------------------------------------------------------------
+
+  #td-weighted Brier and scaled Brier (IPA) from artificial censored data for the never treated strategy (our proposal)
+  # first derive a vector of weights
+  # for individuals with event after art cens (T.cens.0==1) - weight at their own event time
+  # for individuals known without event by tau after art cens (T.cens.0==5) - weight at tau
+  # weights for others are not needed (also does not mind if NA or other number)
+  # taking the last ipw0 weight recorded in dat.long.val for each id suffices here as max time is tau in the data
+  # calculate last ipw0 value in dat.long.val
+  dat.long.val <- dat.long.val |>
+    dplyr::group_by(id) |>
+    dplyr::mutate(ipw0.last=dplyr::last(ipw0))
+
+  #  add this value to dat.val
+  dat.val <- dplyr::left_join(
+    dat.val,
+    dat.long.val |>
+      dplyr::select(c("id","ipw0.last")) |>
+      dplyr::filter(dplyr::row_number()==1),
+    by="id")
+
+  # combine with standard censoring
+  dat.val$ipw.othercens <- 1/km.cens.step(dat.val$T.obs)
+  dat.val$ipw.othercens[dat.val$T.obs==5] <- 1/km.cens.step(4.9999)
+  dat.val$ipw0.comb <- dat.val$ipw0.last * dat.val$ipw.othercens
+
+  brier_raw[i,3] <- Brier(dat.val$T.cens.0, dat.val$D.cens.0, risk=risk0_exp[,5], seq.time=4.9999, weights=dat.val$ipw0.comb)
+  brier_ipa[i,3] <- ipa(dat.val$T.cens.0, dat.val$D.cens.0, risk=risk0_exp[,5], seq.time=4.9999, weights=dat.val$ipw0.comb)
 
 
-  #' # Brier -------------------------------------------------------------------
-  #'
-  #' #'real' Brier and scaled Brier (IPA) using counterfactual data for the never treated strategy
-  #' brier_raw[i,1] <- Brier(dat.cf$T.A0, dat.cf$D.A0, risk0_exp[,5], seq.time=4.9999)
-  #' brier_ipa[i,1] <- ipa(dat.cf$T.A0, dat.cf$D.A0, risk0_exp[,5], seq.time=4.9999)
-  #'
-  #' #td-weighted Brier and scaled Brier (IPA) from artificial censored data for the never treated strategy (our proposal)
-  #' # first derive a vector of weights
-  #' # for individuals with event after art cens (T.cens.0==1) - weight at their own event time
-  #' # for individuals known without event by tau after art cens (T.cens.0==5) - weight at tau
-  #' # weights for others are not needed (also does not mind if NA or other number)
-  #' # taking the last ipw0 weight recorded in dat.long.val for each id suffices here as max time is tau in the data
-  #' # calculate last ipw0 value in dat.long.val
-  #' dat.long.val <- dat.long.val %>% group_by(id) %>% mutate(ipw0.last=last(ipw0))
-  #' #  add this value to dat.val
-  #' dat.val <- left_join(dat.val, dat.long.val %>%
-  #'                        select(c("id","ipw0.last")) %>%
-  #'                        filter(row_number()==1),
-  #'                      by="id")
-  #'
-  #' # combine with standard censoring
-  #' dat.val$ipw.othercens <- 1/km.cens.step(dat.val$T.obs)
-  #' dat.val$ipw.othercens[dat.val$T.obs==5] <- 1/km.cens.step(4.9999)
-  #' dat.val$ipw0.comb <- dat.val$ipw0.last * dat.val$ipw.othercens
-  #'
-  #' brier_raw[i,3] <- Brier(dat.val$T.cens.0, dat.val$D.cens.0, risk=risk0_exp[,5], seq.time=4.9999, weights=dat.val$ipw0.comb)
-  #' brier_ipa[i,3] <- ipa(dat.val$T.cens.0, dat.val$D.cens.0, risk=risk0_exp[,5], seq.time=4.9999, weights=dat.val$ipw0.comb)
-  #'
-  #' # calibration -------------------------------------------------------------
-  #'
-  #' #------------------------------------
-  #' #------------------------------------
-  #' #ESTIMATED mean risks at times 1:5 under the two treatment strategies: "always treated" (risk1), "never treated" (risk0)
-  #' #------------------------------------
-  #' #------------------------------------
-  #'
-  #' calib_risk0[i,,1]=sapply(1:5,FUN=function(x){mean(risk0_exp[,x])})
-  #' calib_risk1[i,,1]=sapply(1:5,FUN=function(x){mean(risk1_exp[,x])})
-  #'
-  #' #------------------------------------
-  #' #------------------------------------
-  #' #OBSERVED risks at times 1:5 under the two treatment strategies: "always treated" (risk1), "never treated" (risk0)
-  #' #------------------------------------
-  #' #------------------------------------
-  #'
-  #' calib_risk0[i,,2]=risk0_obs
-  #' calib_risk1[i,,2]=risk1_obs
-  #'
-  #' ratio <- calib_risk0[,5,2]/calib_risk0[,5,1]
+  #td-weighted Brier and scaled Brier (IPA) from artificial censored data for the never treated strategy (our proposal)
+  # first derive a vector of weights
+  # for individuals with event after art cens (T.cens.0==1) - weight at their own event time
+  # for individuals known without event by tau after art cens (T.cens.0==5) - weight at tau
+  # weights for others are not needed (also does not mind if NA or other number)
+  # taking the last ipw1 weight recorded in dat.long.val for each id suffices here as max time is tau in the data
+  # calculate last ipw1 value in dat.long.val
+  dat.long.val <- dat.long.val |>
+    dplyr::group_by(id) |>
+    dplyr::mutate(ipw1.last=dplyr::last(ipw1))
+  #  add this value to dat.val
+  dat.val <- dplyr::left_join(
+    dat.val,
+    dat.long.val |>
+      dplyr::select(c("id","ipw1.last")) |>
+      dplyr::filter(dplyr::row_number()==1),
+    by="id")
+
+  # combine with standard censoring
+  dat.val$ipw1.comb <- dat.val$ipw1.last * dat.val$ipw.othercens
+
+  brier_raw[i,6] <- Brier(dat.val$T.cens.1, dat.val$D.cens.1, risk1_exp[,5], seq.time=4.9999, weights=dat.val$ipw1.comb)
+  brier_ipa[i,6] <- ipa(dat.val$T.cens.1, dat.val$D.cens.1, risk1_exp[,5], seq.time=4.9999, weights=dat.val$ipw1.comb)
 
 
 
+  # calibration -------------------------------------------------------------
+
+  #------------------------------------
+  #------------------------------------
+  #ESTIMATED mean risks at times 1:5 under the two treatment strategies: "always treated" (risk1), "never treated" (risk0)
+  #------------------------------------
+  #------------------------------------
+
+  calib_risk0[i,,1]=sapply(1:5,FUN=function(x){mean(risk0_exp[,x])})
+  calib_risk1[i,,1]=sapply(1:5,FUN=function(x){mean(risk1_exp[,x])})
+
+  #------------------------------------
+  #------------------------------------
+  #OBSERVED risks at times 1:5 under the two treatment strategies: "always treated" (risk1), "never treated" (risk0)
+  #------------------------------------
+  #------------------------------------
+
+  calib_risk0[i,,2]=risk0_obs
+  calib_risk1[i,,2]=risk1_obs
+
+  oeratio0 <- calib_risk0[,5,2]/calib_risk0[,5,1]
+  oeratio1 <- calib_risk1[,5,2]/calib_risk1[,5,1]
 
   # ipeval ------------------------------------------------------------------
 
@@ -817,29 +850,32 @@ test_that("ipscore long results vs validation under interventions paper", {
     metrics = c("auc", "brier", "scaled_brier", "oeratio")
   )
 
-  ipscore_results_0$ipt$weights
+  # note that weighting models differ slightly, resulting in slightly different
+  # performance.
+  # for wt.mod.baseline, if A_lag_1 == 1, probability is fixed manually to 1
+  # print_model(wt.mod.baseline)
+  # print_model(ipscore_results_1$ipt$model)
 
-  ipscore_results_1$ipt$weights[
-    ipscore_results_1$treatment$observed ==
-      ipscore_results_1$treatment$treatment_of_interest]
+  # for some reason, the implementations for treatment 0 are more in line with
+  # each other than the implementations for treatment 1.
+  # The difference is minimal,
+  # arising from slightly different weighting models, and a different way in
+  # computing the null model (weighted KM with time dependent IPC vs
+  # weighted mean in pseudopopulation had nobody been censored, with last IPC
+  # weight)
 
-  dim(wt_matrix1[ids.1,])
+  expect_equal(ipscore_results_0$score$auc[[1]], disc_auct[i,4], tolerance = 0.01)
+  expect_equal(ipscore_results_1$score$auc[[1]], disc_auct[i,8], tolerance = 0.01)
 
-  wt_matrix1[ids.1,1]
+  expect_equal(ipscore_results_0$score$brier[[1]], brier_raw[i,3], tolerance = 0.01)
+  expect_equal(ipscore_results_1$score$brier[[1]], brier_raw[i,6], tolerance = 0.01)
 
-  print_model(wt.mod.baseline)
-  print_model(ipscore_results_1$ipt$model)
+  expect_equal(ipscore_results_0$score$oeratio[[1]], oeratio0, tolerance = 0.02)
+  expect_equal(ipscore_results_1$score$oeratio[[1]], oeratio1, tolerance = 0.02)
 
+  expect_equal(ipscore_results_0$score$scaled_brier[[1]], brier_ipa[i,3], tolerance = 0.02)
+  expect_equal(ipscore_results_1$score$scaled_brier[[1]], brier_ipa[i,6], tolerance = 0.02)
 
-  expect_equal(ipscore_results_0$score$auc[[1]], disc_auct[i,4])
-  expect_equal(ipscore_results_1$score$auc[[1]], disc_auct[i,8])
-
-
-
-
-  expect_equal(ratio, ipscore_results_0$score$oeratio[[1]])
-  expect_equal(disc_auct[i,4], ipscore_results_0$score$auc[[3]])
-
-
-
+  # OE and scaled brier are slightly more off (for reasons outlined above), but
+  # accurate enough to conclude implementations are similar enough
 })
