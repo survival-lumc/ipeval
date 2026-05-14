@@ -102,12 +102,13 @@ ip_score_long <- function(probabilities, data_outcome, data_long, time_horizon,
   )
   names(data_flat)[3] <- as.character(treatment_formula[[2]])
 
-  outcome <- extract_outcome(data_outcome, substitute(Surv(time, status)),
+  outcome <- extract_outcome(data_outcome, substitute(survival::Surv(time, status)),
                              time_horizon = time_horizon)
 
   treatment <- extract_treatment(data_flat, treatment_formula, TRUE)
 
   ipt <- get_iptw(iptw = data_flat$ipt)
+  ipt$model <- ipt_visit$model
   ipc <- get_ipcw(ipcw = rep(1, nrow(data_flat)))
 
   # ipt$weights <- threshold_weights(ipt$weights, 0.99)
