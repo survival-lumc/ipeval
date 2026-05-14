@@ -3,8 +3,10 @@
 #' This function computes the performance of the predictions in the given data,
 #' which may contain a mix of treated and untreated subjects. It exists only to
 #' demonstrate the difference between 'normal' performance and counterfactual
-#' performance. It is not user friendly and should not be relied on. It does not
-#' support time-to-event data.
+#' performance. It is not user friendly and should not be relied on. It does
+#' support time-to-event data, but no censoring! I.e. you could evaluate
+#' whether outcomes happen before a time horizon. It does not use IPC weighting
+#' to adjust for censoring.
 #'
 #' @param object One of the following three options to be validated:
 #' \itemize{
@@ -20,6 +22,8 @@
 #'   computed. Options are c("auc", "brier", "oeratio", "calplot").
 #' @param null_model If TRUE fit a risk prediction model which ignores the
 #'   covariates and predicts the same value for all subjects.
+#' @param time_horizon For time to event data, the prediction horizon of
+#'   interest.
 #'
 #' @returns Performance metrics in the observed dataset.
 #' @export
@@ -43,7 +47,7 @@
 
 observed_score <- function(object, data, outcome,
                     metrics = c("auc", "brier", "oeratio", "calplot"),
-                    null_model = FALSE) {
+                    null_model = FALSE, time_horizon) {
 
   # make a list of risk predictions
   object <- make_list_if_not_list(object)
@@ -65,13 +69,14 @@ observed_score <- function(object, data, outcome,
     "treatment_of_interest" = 1
   )
 
-  score_outcome <- extract_outcome(data, substitute(outcome))
+  score_outcome <- extract_outcome(data, substitute(outcome), time_horizon)
 
   score_ipt <- list("weights" = rep(1, nrow(data)))
+  score_ipc <- get_ipcw(ipcw = rep(1, nrow(data)))
 
   if (null_model) {
     score_predictions <- fit_null(score_trt, score_outcome,
-                                  score_predictions, score_ipt, NULL)
+                                  score_predictions, score_ipt, score_ipc)
   }
 
   ip_object <- construct_ip_object(
@@ -79,7 +84,7 @@ observed_score <- function(object, data, outcome,
     treatment = score_trt,
     predictions = score_predictions,
     ipt = score_ipt,
-    ipc = NULL,
+    ipc = score_ipc,
     metrics = metrics
   )
   ip_object <- add_to_ip_object(ip_object, "quiet", TRUE)

@@ -1,7 +1,7 @@
 # provides one function to simulate longitudinal data
 
 generate_long_data_cox <- function(
-    n, n_visits = 5, cf = FALSE, seed = 123,
+    n, n_visits = 5, seed = 123,
     censoring = FALSE,
     gamma_0 = -1,gamma_L = 0.5,alpha_0 = -2,alpha_A = -0.5,alpha_L = 0.5,
     alpha_U = 0.5,
@@ -26,8 +26,15 @@ generate_long_data_cox <- function(
     },
     coxLP = function(i) {
       alpha_0 + alpha_A * A[, i] + alpha_L * L[, i] + alpha_U * U
+    },
+    censorLP = function(i) {
+      -2 # constant, so non informative. mean censor time is ~ 5
     }
     ) {
+
+  # TODO: add support for setting visit times other than 0, 1, 2, ...
+  # visit 1 is always t = 0 though.
+  visit_times <- seq(0, n_visits-1)
 
   L <- matrix(nrow = n, ncol = n_visits)
   A <- matrix(nrow = n, ncol = n_visits)
@@ -38,11 +45,15 @@ generate_long_data_cox <- function(
   U <- U()
 
   for (i in 1:n_visits) {
-    # i have to reset seed every time, because L, A, coxLP may be deterministic
+    # I have to reset seed every time, because L, A, coxLP may be deterministic
     # or a random process. if its random, then future random draws are different
-    # if it were deterministic. This makes sure that setting trt deterministically
-    # to 0 will make sure outcomes remain consistent
+    # than if it were deterministic. This makes sure that setting trt
+    # deterministically to e.g. 0 will make sure outcomes remain consistent
     set.seed(seed + i*100 + 1)
+
+    # simulate A, L, even when we know a patient already has
+    # had an event (and therefore misses subsequent visits). These
+    # are set to NA later
 
     L[, i] <- Li(i)
 
@@ -50,15 +61,60 @@ generate_long_data_cox <- function(
     A[, i] <- Ai(i)
 
     set.seed(seed + i*100 + 3)
-    new.t <- simulate_time_to_event(
+    new_event_time <- simulate_time_to_event(
       n = n,
       constant_baseline_haz = 1,
       LP = coxLP(i)
     )
-    time <- ifelse(is.na(time) & new.t < 1, i - 1 + new.t,time)
+
+    if (censoring == TRUE) {
+      set.seed(seed + i*100 + 4)
+      new_censor_time <- simulate_time_to_event(
+        n = n,
+        constant_baseline_haz = 1,
+        LP = censorLP(i)
+      )
+      new_time <- pmin(new_event_time, new_censor_time)
+      new_status <- new_event_time < new_censor_time
+
+      # abuse memoryless property
+      status <- ifelse(
+        is.na(status) & new_time < 1,
+        new_status,
+        status
+      )
+      time <- ifelse(
+        is.na(time) & new_time < 1,
+        i - 1 + new_time,
+        time
+      )
+    } else {
+      status <- ifelse(
+        is.na(status) & new_event_time < 1,
+        rep(1, n),
+        status
+      )
+      time <- ifelse(
+        is.na(time) & new_event_time < 1,
+        i - 1 + new_event_time,
+        time
+      )
+    }
   }
-  status <- ifelse(is.na(time), 0, 1)
-  time <- ifelse(is.na(time), n_visits, time)
+
+  if (censoring == FALSE) {
+    status <- rep(1, n)
+    time <- ifelse(is.na(time), n_visits - 1 + new_event_time, time)
+  } else {
+    status <- ifelse(is.na(status), new_status, status)
+    time <- ifelse(is.na(time), n_visits - 1 + new_time, time)
+  }
+
+  # wipe A and L values after events (no visit after event)
+  for (i in 1:n_visits) {
+    A[, i] <- ifelse(time < visit_times[i], rep(NA, n), A[, i])
+    L[, i] <- ifelse(time < visit_times[i], rep(NA, n), L[, i])
+  }
 
   colnames(A) <- paste0("A", 0:(n_visits - 1))
   colnames(L) <- paste0("L", 0:(n_visits - 1))

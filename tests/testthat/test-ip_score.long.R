@@ -7,7 +7,7 @@ test_that("ipscore long results vs CF dataset correct", {
   iptw <- ipt_weights(df_dev_long, A ~ L * A_lag_1)$weights
 
   coxmsm <- fit_long_cox_model(data_long = df_dev_long, iptw)
-  badmodel <- glm(status ~ A0 + L0, data = df_dev, family = "binomial")
+  badmodel <- glm(A0 ~ L0, data = df_dev, family = "binomial")
 
   df_val <- generate_long_data_cox(n_val, seed = 3)
   df_cf0 <- generate_long_data_cox(n_val, seed = 3, Ai = function(i) rep(0, n_val))
@@ -49,7 +49,8 @@ test_that("ipscore long results vs CF dataset correct", {
     null_model = TRUE,
     metrics = metrics
   )
-  score0_true <- observed_score(models, df_cf0, status, metrics, TRUE)
+  score0_true <- observed_score(models, df_cf0, Surv(time, status), metrics,
+                                TRUE, 5)
 
   score1 <- ip_score_long(
     probabilities = models,
@@ -61,10 +62,23 @@ test_that("ipscore long results vs CF dataset correct", {
     null_model = TRUE,
     metrics = metrics
   )
-  score1_true <- observed_score(models, df_cf1, status, metrics, TRUE)
+  score1_true <- observed_score(models, df_cf1, Surv(time, status), metrics,
+                                TRUE, 5)
 
   expect_equal(score0$score, score0_true$score, tolerance = 0.01)
   expect_equal(score1$score, score1_true$score, tolerance = 0.01)
+
+  # TODO: test against some hardcoded truths, i.e. random auc is 0.5, etc
+})
+
+test_that("ipscore long results vs CF dataset with censoring", {
+  n <- 100000
+  df_dev <- generate_long_data_cox(1000, seed = 1)
+  df_dev_long <- make_dev_long(df_dev)
+  iptw <- ipt_weights(df_dev_long, A ~ L * A_lag_1)$weights
+
+  coxmsm <- fit_long_cox_model(data_long = df_dev_long, iptw)
+
 })
 
 test_that("ipscore long results vs validation under interventions paper", {
