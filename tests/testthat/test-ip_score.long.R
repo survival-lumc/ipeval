@@ -67,13 +67,18 @@ test_that("ipscore long results vs CF dataset correct", {
 
   expect_equal(score0$score, score0_true$score, tolerance = 0.01)
   expect_equal(score1$score, score1_true$score, tolerance = 0.01)
+  # if risk_random model fails while metrics of other models are accurate,
+  # this is very likely due to consistency not holding at the individual level
+  # i.e. patients that were completely treated in the observational data
+  # need to have exact same outcomes & confounders as the corresponding patient
+  # in the counterfactual 'truth' data df_cf1.
 
   # TODO: test against some hardcoded truths, i.e. random auc is 0.5, etc
 })
 
 test_that("ipscore long results vs CF dataset with censoring", {
   n <- 100000
-  df_dev <- generate_long_data_cox(1000, seed = 1)
+  df_dev <- generate_long_data_cox(1000, seed = 1, censoring = TRUE)
   df_dev_long <- make_dev_long(df_dev)
   iptw <- ipt_weights(df_dev_long, A ~ L * A_lag_1)$weights
 

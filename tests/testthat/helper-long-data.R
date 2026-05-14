@@ -2,7 +2,8 @@
 
 generate_long_data_cox <- function(
     n, n_visits = 5, seed = 123,
-    censoring = FALSE,
+    administrative_censoring_time = Inf,
+    nonadministrative_censoring = FALSE,
     gamma_0 = -1,gamma_L = 0.5,alpha_0 = -2,alpha_A = -0.5,alpha_L = 0.5,
     alpha_U = 0.5,
     U = function() rnorm(n, 0, 0.1),
@@ -29,12 +30,13 @@ generate_long_data_cox <- function(
     },
     censorLP = function(i) {
       -2 # constant, so non informative. mean censor time is ~ 5
-    }
+    },
+    visit_times = seq(0, n_visits-1)
     ) {
 
-  # TODO: add support for setting visit times other than 0, 1, 2, ...
-  # visit 1 is always t = 0 though.
-  visit_times <- seq(0, n_visits-1)
+  stopifnot(max(visit_times) < administrative_censoring_time)
+
+  visit_times <- c(visit_times, administrative_censoring_time)
 
   L <- matrix(nrow = n, ncol = n_visits)
   A <- matrix(nrow = n, ncol = n_visits)
@@ -67,7 +69,9 @@ generate_long_data_cox <- function(
       LP = coxLP(i)
     )
 
-    if (censoring == TRUE) {
+    time_until_next_visit <- visit_times[i+1] - visit_times[i]
+
+    if (nonadministrative_censoring == TRUE) {
       set.seed(seed + i*100 + 4)
       new_censor_time <- simulate_time_to_event(
         n = n,
@@ -77,38 +81,33 @@ generate_long_data_cox <- function(
       new_time <- pmin(new_event_time, new_censor_time)
       new_status <- new_event_time < new_censor_time
 
-      # abuse memoryless property
+      # abuse memoryless property from exponential survival times
       status <- ifelse(
-        is.na(status) & new_time < 1,
+        is.na(status) & new_time < time_until_next_visit,
         new_status,
         status
       )
       time <- ifelse(
-        is.na(time) & new_time < 1,
-        i - 1 + new_time,
+        is.na(time) & new_time < time_until_next_visit,
+        visit_times[i] + new_time,
         time
       )
     } else {
       status <- ifelse(
-        is.na(status) & new_event_time < 1,
+        is.na(status) & new_event_time < time_until_next_visit,
         rep(1, n),
         status
       )
       time <- ifelse(
-        is.na(time) & new_event_time < 1,
-        i - 1 + new_event_time,
+        is.na(time) & new_event_time < time_until_next_visit,
+        visit_times[i] + new_event_time,
         time
       )
     }
   }
 
-  if (censoring == FALSE) {
-    status <- rep(1, n)
-    time <- ifelse(is.na(time), n_visits - 1 + new_event_time, time)
-  } else {
-    status <- ifelse(is.na(status), new_status, status)
-    time <- ifelse(is.na(time), n_visits - 1 + new_time, time)
-  }
+  status[is.na(status)] <- 0 # happens when administrative censored
+  time[is.na(time)] <- administrative_censoring_time
 
   # wipe A and L values after events (no visit after event)
   for (i in 1:n_visits) {
