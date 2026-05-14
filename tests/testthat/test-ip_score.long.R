@@ -43,9 +43,10 @@ test_that("ipscore long results vs CF dataset correct", {
     probabilities = models,
     data_outcome = df_val_outcome,
     data_long = df_val_long,
+    visit_times = 0:4,
     time_horizon = 5,
     treatment_formula = A ~ (A_lag_1 * L),
-    treatment_of_interest = rep(0, 5),
+    treatment_of_interest = "never",
     null_model = TRUE,
     metrics = metrics
   )
@@ -56,9 +57,10 @@ test_that("ipscore long results vs CF dataset correct", {
     probabilities = models,
     data_outcome = df_val_outcome,
     data_long = df_val_long,
+    visit_times = 0:4,
     time_horizon = 5,
     treatment_formula = A ~ (A_lag_1 * L),
-    treatment_of_interest = rep(1, 5),
+    treatment_of_interest = "always",
     null_model = TRUE,
     metrics = metrics
   )
@@ -78,7 +80,8 @@ test_that("ipscore long results vs CF dataset correct", {
 
 test_that("ipscore long results vs CF dataset with censoring", {
   n <- 100000
-  df_dev <- generate_long_data_cox(1000, seed = 1, censoring = TRUE)
+  df_dev <- generate_long_data_cox(1000, seed = 1,
+                                   visit_times = c(0, 2, 4, 9, 10))
   df_dev_long <- make_dev_long(df_dev)
   iptw <- ipt_weights(df_dev_long, A ~ L * A_lag_1)$weights
 

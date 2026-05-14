@@ -74,8 +74,8 @@ add_lag_terms <- function(df, var, lag = 1, fill = 0) {
 #   - add_lag function
 
 #' @export
-ip_score_long <- function(probabilities, data_outcome, data_long, time_horizon,
-                          treatment_formula, treatment_of_interest,
+ip_score_long <- function(probabilities, data_outcome, data_long, visit_times,
+                          time_horizon, treatment_formula, treatment_of_interest,
                           metrics = c("auc", "brier", "oeratio", "calplot"),
                           null_model = TRUE) {
 
@@ -88,7 +88,14 @@ ip_score_long <- function(probabilities, data_outcome, data_long, time_horizon,
 
   # we should make sure that ids in data_outcome and data_long have same ordering
   # here
+  stopifnot(visit_times[0] == 0)
+  stopifnot(max(visit_times) < time_horizon)
+  n_visits <- length(visit_times)
 
+  if (is.character(treatment_of_interest) && treatment_of_interest == "always")
+    treatment_of_interest <- rep(1, n_visits)
+  if (is.character(treatment_of_interest) && treatment_of_interest == "never")
+    treatment_of_interest <- rep(0, n_visits)
 
   # create get_iptw long fct instead of this
   ipt_visit <- ipt_weights(data_long, treatment_formula)
@@ -131,6 +138,10 @@ ip_score_long <- function(probabilities, data_outcome, data_long, time_horizon,
 
   ip_object <- add_to_ip_object(ip_object, "quiet", FALSE)
   ip_object <- add_to_ip_object(ip_object, "treatment_formula", ipt_visit$model)
+
+  # TODO: print in assumptions # patients that satisfy treatment strategy
+  # also in point trt!
+
   return(ip_object)
 }
 
