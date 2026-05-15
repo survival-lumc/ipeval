@@ -78,16 +78,72 @@ test_that("ipscore long results vs CF dataset correct", {
   # TODO: test against some hardcoded truths, i.e. random auc is 0.5, etc
 })
 
-test_that("ipscore long results vs CF dataset with censoring", {
-  n <- 100000
+test_that("ipscore long results vs CF dataset with KM censoring", {
   df_dev <- generate_long_data_cox(1000, seed = 1,
-                                   visit_times = c(0, 2, 4, 9, 10))
+                                   visit_times = 0:4)
   df_dev_long <- make_dev_long(df_dev)
   iptw <- ipt_weights(df_dev_long, A ~ L * A_lag_1)$weights
 
+  n <- 500000
+
   coxmsm <- fit_long_cox_model(data_long = df_dev_long, iptw)
 
+  df_val <- generate_long_data_cox(n, seed = 2, nonadministrative_censoring = TRUE)
+  df_cf0 <- generate_long_data_cox(n, seed = 2, nonadministrative_censoring = FALSE,
+                                   Ai = function(i) rep(0, n))
+  df_cf1 <- generate_long_data_cox(n, seed = 2, nonadministrative_censoring = FALSE,
+                                   Ai = function(i) rep(1, n))
+
+  risk_0 <- risk_under_0(coxmsm, 5, df_val$L0)
+  risk_1 <- risk_under_1(coxmsm, 5, df_val$L0)
+
+  models <- list(risk_0, risk_1)
+
+  df_val_outcome <- df_val[, c("id", "time", "status")]
+  df_val_long <- wide_to_long(
+    df_val, "id", list(A = paste0("A", 0:4), L = paste0("L", 0:4)),
+    0:4, df_val$time)
+
+  df_val_long <- add_lag_terms(df_val_long, "A")
+
+  metrics <- c("auc", "brier", "oeratio")
+
+  score0 <- ip_score_long(
+    probabilities = models,
+    data_outcome = df_val_outcome,
+    data_long = df_val_long,
+    visit_times = 0:4,
+    time_horizon = 5,
+    treatment_formula = A ~ (A_lag_1 * L),
+    treatment_of_interest = "never",
+    metrics = metrics
+  )
+  score0_true <- observed_score(models, df_cf0, Surv(time, status),
+                                null_model = TRUE, time_horizon = 5,
+                                metrics = metrics)
+
+  expect_equal(score0$score, score0_true$score, tolerance = 0.01)
+
+  score1 <- ip_score_long(
+    probabilities = models,
+    data_outcome = df_val_outcome,
+    data_long = df_val_long,
+    visit_times = 0:4,
+    time_horizon = 5,
+    treatment_formula = A ~ (A_lag_1 * L),
+    treatment_of_interest = "always",
+    metrics = metrics
+  )
+
+  score1_true <- observed_score(models, df_cf1, Surv(time, status),
+                                null_model = TRUE, time_horizon = 5,
+                                metrics = metrics)
+
+  expect_equal(score1$score, score1_true$score, tolerance = 0.01)
+
 })
+
+
 
 test_that("ipscore long results vs validation under interventions paper", {
   # Using the code of Keogh, van geloven (2024) to compare our implementations

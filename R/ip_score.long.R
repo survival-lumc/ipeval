@@ -118,7 +118,13 @@ ip_score_long <- function(probabilities, data_outcome, data_long, visit_times,
 
   ipt <- get_iptw(iptw = data_flat$ipt)
   ipt$model <- ipt_visit$model
-  ipc <- get_ipcw(ipcw = rep(1, nrow(data_flat)))
+
+
+  # ipc <- get_ipcw(ipcw = rep(1, nrow(data_flat)))
+  # for KM, we can use data_outcome
+  ipc <- get_ipcw(Surv(time, status) ~ 1, data_outcome,
+                  cens_model = "KM", time_horizon = time_horizon)
+
 
   # ipt$weights <- threshold_weights(ipt$weights, 0.99)
 
