@@ -93,6 +93,9 @@ test_that("ipscore long results vs CF dataset with KM censoring", {
                                    Ai = function(i) rep(0, n))
   df_cf1 <- generate_long_data_cox(n, seed = 2, nonadministrative_censoring = FALSE,
                                    Ai = function(i) rep(1, n))
+  df_val_informativecensor <-
+    generate_long_data_cox(n, seed = 2, nonadministrative_censoring = TRUE,
+                           censorLP = function(i) U)
 
   risk_0 <- risk_under_0(coxmsm, 5, df_val$L0)
   risk_1 <- risk_under_1(coxmsm, 5, df_val$L0)
@@ -140,6 +143,39 @@ test_that("ipscore long results vs CF dataset with KM censoring", {
                                 metrics = metrics)
 
   expect_equal(score1$score, score1_true$score, tolerance = 0.01)
+
+  score0cox <- ip_score_long(probabilities = models,
+                             data_outcome = df_val_outcome,
+                             data_long = df_val_long,
+                             visit_times = 0:4,
+                             time_horizon = 5,
+                             treatment_formula = A ~ (A_lag_1 * L),
+                             treatment_of_interest = "never",
+                             metrics = metrics,
+                             cens_model = "cox",
+                             cens_formula = ~ 1
+  )
+  expect_equal(score0cox$score, score0_true$score, tolerance = 0.01)
+
+  df_val_inf_outcome <- df_val_informativecensor[, c("id", "time", "status")]
+  df_val_inf_long <- wide_to_long(
+    df_val_informativecensor, c("id", "U"), list(A = paste0("A", 0:4), L = paste0("L", 0:4)),
+    0:4, df_val_informativecensor$time)
+
+  df_val_long <- add_lag_terms(df_val_long, "A")
+
+  score0cox_informative <- ip_score_long(probabilities = models,
+                             data_outcome = df_val_outcome,
+                             data_long = df_val_long,
+                             visit_times = 0:4,
+                             time_horizon = 5,
+                             treatment_formula = A ~ (A_lag_1 * L),
+                             treatment_of_interest = "never",
+                             metrics = metrics,
+                             cens_model = "cox",
+                             cens_formula = ~ 1
+  )
+  expect_equal(score0cox$score, score0_true$score, tolerance = 0.01)
 
 })
 

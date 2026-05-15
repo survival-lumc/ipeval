@@ -76,10 +76,11 @@ add_lag_terms <- function(df, var, lag = 1, fill = 0) {
 #   - add_lag function
 
 #' @export
-ip_score_long <- function(probabilities, data_outcome, data_long, visit_times,
-                          time_horizon, treatment_formula, treatment_of_interest,
+ip_score_long <- function(probabilities, data_outcome, data_long,
+                          treatment_formula, treatment_of_interest,
                           metrics = c("auc", "brier", "oeratio", "calplot"),
-                          null_model = TRUE) {
+                          visit_times, time_horizon, cens_model = "KM",
+                          cens_formula = ~ 1, null_model = TRUE) {
 
   # assert:
   # - probabilities and data outcome same length
@@ -111,19 +112,56 @@ ip_score_long <- function(probabilities, data_outcome, data_long, visit_times,
   )
   names(data_flat)[3] <- as.character(treatment_formula[[2]])
 
+  ipt <- get_iptw(iptw = data_flat$ipt)
+  ipt$model <- ipt_visit$model
+
+
   outcome <- extract_outcome(data_outcome, substitute(survival::Surv(time, status)),
                              time_horizon = time_horizon)
 
   treatment <- extract_treatment(data_flat, treatment_formula, TRUE)
 
-  ipt <- get_iptw(iptw = data_flat$ipt)
-  ipt$model <- ipt_visit$model
+  # move to get_ipcw_long fct
+  if (cens_model == "KM") {
+    # for KM, we can use data_outcome
+    ipc <- get_ipcw(Surv(time, status) ~ 1, data_outcome,
+                    cens_model = "KM", time_horizon = time_horizon)
+  } else if (cens_model == "cox") {
+    # we survsplit here, so maybe we need data_long to have surv intervals
+    # anyway
+    survintervals <- survival::survSplit(
+      formula = Surv(time, status) ~ .,
+      data = data_outcome,
+      cut = visit_times)
+    stopifnot(all(survintervals$id == data_long$id))
+    data_combined <- cbind(survintervals, data_long)
+    data_combined$censored <- with(
+      data_combined,
+      status == 0 & !duplicated(id, fromLast = TRUE)) # i.e. last row
+    full_cens_formula <- stats::update.formula(old = cens_formula,
+                          Surv(tstart, time, censored) ~ .)
 
+    cens_model <- survival::coxph(full_cens_formula, data_combined,
+                                  model = TRUE, x = TRUE)
+    prob <- 1-predict_cox(cens_model, data_combined, pmin(data_combined[, "time"],
+                                                          time_horizon))
+    ipc_visit <- ifelse(
+      data_combined[, "censored"] == TRUE & data_combined[, "time"] < time_horizon,
+      0,
+      1 / prob
+    )
+    ipc_product <- tapply(ipc_visit, data_long$id,
+                          FUN = function(x) tail(x, 1)) # not the product somehow?
 
-  # ipc <- get_ipcw(ipcw = rep(1, nrow(data_flat)))
-  # for KM, we can use data_outcome
-  ipc <- get_ipcw(Surv(time, status) ~ 1, data_outcome,
-                  cens_model = "KM", time_horizon = time_horizon)
+    ipc <- list()
+    ipc$method <- "cox"
+    ipc$cens_formula <- full_cens_formula
+    ipc$model <- cens_model
+    ipc$weights <- ipc_product
+
+  } else {
+    print("censoring model not implemented")
+  }
 
 
   # ipt$weights <- threshold_weights(ipt$weights, 0.99)

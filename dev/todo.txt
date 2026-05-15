@@ -14,10 +14,4 @@ todo
 
 discuss
 - event/censor ties for cox censoring
-- time dependent confounders effect op censoring?
-- null model is dat gewoon weighted mean van outcome in pseudopop?
-- wat is truth als we simuleren dat iedereen treatment krijgt? Omdat L[i] afhangt
-    van A[i-1]. Dus A = 1,1,1,1,1 beinvloed ook L, wat weer survtime beinvloed.
-    daardoor is het null model anders in counterfactual pseudopopulatie anders dan
-    Simuleren we L[i] obv orginele A, en fixen we A dan op een patroon, of
-    simuleren we L[i] obv A = 1,1,1,1,1?
+- In welke populatie schat je censoring mechanisme? oorspronkelijke? 'counterfactual'?
