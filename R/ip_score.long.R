@@ -14,21 +14,21 @@ wide_to_long <- function(df, baseline_variables, wide_variables, visit_times,
   # we sometimes want a specific time dependent variable to be available in all
   # rows too. I.e. L0 may be important at all time points.
   # we have to remove it first, then add it back later
-  both_i <- baseline_variables %in% unlist(wide_variables)
-  both_vars <- baseline_variables[both_i]
-  baseline_variables <- baseline_variables[!both_i]
+  # both_i <- baseline_variables %in% unlist(wide_variables)
+  # both_vars <- baseline_variables[both_i]
+  # baseline_variables <- baseline_variables[!both_i]
 
   long <- reshape(
     data = df,
     varying = wide_variables,
     v.names = names(wide_variables),
     timevar = "visit_time",
-    idvar = baseline_variables,
+    idvar = "id",
     times = visit_times,
     direction = "long",
     new.row.names = NULL
   )
-  for (b in both_vars) {
+  for (b in baseline_variables) {
     long[[b]] <- rep(df[[b]], length(visit_times))
   }
 
@@ -37,7 +37,7 @@ wide_to_long <- function(df, baseline_variables, wide_variables, visit_times,
   outcome_times_rep <- rep(outcome_times, length(visit_times))
   outcome_times_rep <- outcome_times_rep[order(long$id, long$visit_time)]
 
-  cols <- c(baseline_variables, both_vars, "visit_time", names(wide_variables))
+  cols <- c(baseline_variables, "visit_time", names(wide_variables))
   long <- long[order(long$id, long$visit_time), cols]
 
   long <- long[long$visit_time <= outcome_times_rep, ]

@@ -4,31 +4,29 @@ generate_long_data_cox <- function(
     n, n_visits = 5, seed = 123,
     administrative_censoring_time = Inf,
     nonadministrative_censoring = FALSE,
-    gamma_0 = -1,gamma_L = 0.5,alpha_0 = -2,alpha_A = -0.5,alpha_L = 0.5,
-    alpha_U = 0.5,
-    U = function() rnorm(n, 0, 0.1),
-    Li = function(i) {
+    Uf = ~ function() rnorm(n, 0, 0.1),
+    Lf = ~ function() {
       if (i == 1) {
         rnorm(n, U, 1)
       } else {
         rnorm(n, 0.8 * L[, i - 1] - A[, i - 1] + 0.1 * (i-1) + U)
       }
     },
-    Ai = function(i) {
+    Af = ~ function() {
       if (i == 1) {
-        rbinom(n, 1, plogis(gamma_0 + gamma_L * L[, 1]))
+        rbinom(n, 1, plogis(-1 + 0.5 * L[, 1]))
       } else {
         ifelse(
           A[, i - 1] == 1,
           rep(1, n),
-          rbinom(n, 1, plogis(gamma_0 + gamma_L * L[, i]))
+          rbinom(n, 1, plogis(-1 + 0.5 * L[, i]))
         )
       }
     },
-    coxLP = function(i) {
-      alpha_0 + alpha_A * A[, i] + alpha_L * L[, i] + alpha_U * U
+    coxLP = ~ function() {
+      -2 + -0.5 * A[, i] + 0.5 * L[, i] + 0.5 * U
     },
-    censorLP = function(i) {
+    censorLP = ~ function() {
       -2 # constant, so non informative. mean censor time is ~ 5
     },
     visit_times = seq(0, n_visits-1)
@@ -40,11 +38,18 @@ generate_long_data_cox <- function(
 
   L <- matrix(nrow = n, ncol = n_visits)
   A <- matrix(nrow = n, ncol = n_visits)
+  U <- rep(NA, n)
   time <- rep(NA, n)
   status <- rep(NA, n)
+  i <- NA
 
   set.seed(seed)
-  U <- U()
+
+  evalf <- function(f) {
+    eval(f[[2]], envir = list(n = n, i = i, A = A, L = L, U = U))()
+  }
+
+  U <- evalf(Uf)
 
   for (i in 1:n_visits) {
     # I have to reset seed every time, because L, A, coxLP may be deterministic
@@ -57,16 +62,16 @@ generate_long_data_cox <- function(
     # had an event (and therefore misses subsequent visits). These
     # are set to NA later
 
-    L[, i] <- Li(i)
+    L[, i] <- evalf(Lf)
 
     set.seed(seed + i*100 + 2)
-    A[, i] <- Ai(i)
+    A[, i] <- evalf(Af)
 
     set.seed(seed + i*100 + 3)
     new_event_time <- simulate_time_to_event(
       n = n,
       constant_baseline_haz = 1,
-      LP = coxLP(i)
+      LP = evalf(coxLP)
     )
 
     time_until_next_visit <- visit_times[i+1] - visit_times[i]
@@ -76,7 +81,7 @@ generate_long_data_cox <- function(
       new_censor_time <- simulate_time_to_event(
         n = n,
         constant_baseline_haz = 1,
-        LP = censorLP(i)
+        LP = evalf(censorLP)
       )
       new_time <- pmin(new_event_time, new_censor_time)
       new_status <- new_event_time < new_censor_time
