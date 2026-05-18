@@ -1015,6 +1015,7 @@ test_that("ipscore long results vs validation under interventions paper", {
     time_horizon = 5,
     treatment_formula = A ~ A_lag_1 * L,
     treatment_of_interest = rep(0, 5),
+    visit_times = 0:4,
     null_model = FALSE,
     metrics = c("auc", "brier", "scaled_brier", "oeratio")
   )
@@ -1026,6 +1027,7 @@ test_that("ipscore long results vs validation under interventions paper", {
     time_horizon = 5,
     treatment_formula = A ~ A_lag_1 * L,
     treatment_of_interest = rep(1, 5),
+    visit_times = 0:4,
     null_model = FALSE,
     metrics = c("auc", "brier", "scaled_brier", "oeratio")
   )

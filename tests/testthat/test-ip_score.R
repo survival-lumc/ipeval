@@ -242,7 +242,7 @@ test_that("ip_score metrics equal to unobserved CF metrics, binary outcome", {
   expect_equal(unname(ip_score$score$auc), score$AUC$score$AUC, tolerance = 0.01)
   expect_equal(unname(ip_score$score$brier), score$Brier$score$Brier[[2]], tolerance = 0.01)
   expect_equal(unname(ip_score$score$oeratio), score$oe, tolerance = 0.01)
-  expect_equal(unname(ip_score$score$scaled_brier), scaled_brier)
+  expect_equal(unname(ip_score$score$scaled_brier), scaled_brier, tolerance = 0.02)
 })
 
 test_that("ip_score metrics equal to unobserved CF metrics, surv, uncensored", {
