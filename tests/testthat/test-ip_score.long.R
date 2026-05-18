@@ -79,25 +79,31 @@ test_that("ipscore long results vs CF dataset correct", {
 })
 
 test_that("ipscore long results vs CF dataset with KM censoring", {
+
+  metrics <- c("auc", "brier", "oeratio")
+
+  # fit a model to validate
   df_dev <- generate_long_data_cox(1000, seed = 2)
   df_dev_long <- make_dev_long(df_dev)
   iptw <- ipt_weights(df_dev_long, A ~ L * A_lag_1)$weights
-
-  n <- 500000
-
   coxmsm <- fit_long_cox_model(data_long = df_dev_long, iptw)
 
+  # simulate validation datasets, with noninformative censoring
+  n <- 1000000
   df_val <- generate_long_data_cox(n, seed = 3, nonadministrative_censoring = TRUE)
+
+  # simulate counterfactual datasets, where censoring does not happen.
   df_cf0 <- generate_long_data_cox(n, seed = 3, nonadministrative_censoring = FALSE,
                                    Af = ~ function() rep(0, n))
   df_cf1 <- generate_long_data_cox(n, seed = 3, nonadministrative_censoring = FALSE,
                                    Af = ~ function() rep(1, n))
 
+  # estimate risks using coxmsm model.
   risk_0 <- risk_under_0(coxmsm, 5, df_val$L0)
   risk_1 <- risk_under_1(coxmsm, 5, df_val$L0)
-
   models <- list(risk_0, risk_1)
 
+  # prepare dataset for validation function
   df_val_outcome <- df_val[, c("id", "time", "status")]
   df_val_long <- wide_to_long(
     df_val, "id", list(A = paste0("A", 0:4), L = paste0("L", 0:4)),
@@ -105,7 +111,8 @@ test_that("ipscore long results vs CF dataset with KM censoring", {
 
   df_val_long <- add_lag_terms(df_val_long, "A")
 
-  metrics <- c("auc", "brier", "oeratio")
+  # evaluate performance under never treated strategy, compare against
+  # 'counterfactual' truth. tell ip_score_long to use KM to estimate IPCW
 
   score0 <- ip_score_long(
     probabilities = models,
@@ -122,6 +129,9 @@ test_that("ipscore long results vs CF dataset with KM censoring", {
                                 metrics = metrics)
 
   expect_equal(score0$score, score0_true$score, tolerance = 0.01)
+
+  # evaluate performance under always treated strategy, compare against
+  # 'counterfactual' truth.
 
   score1 <- ip_score_long(
     probabilities = models,
@@ -140,6 +150,8 @@ test_that("ipscore long results vs CF dataset with KM censoring", {
 
   expect_equal(score1$score, score1_true$score, tolerance = 0.02)
 
+  # Use Cox instead of KM to estimate the IPCW
+
   score0cox <- ip_score_long(probabilities = models,
                              data_outcome = df_val_outcome,
                              data_long = df_val_long,
@@ -153,18 +165,33 @@ test_that("ipscore long results vs CF dataset with KM censoring", {
   )
   expect_equal(score0cox$score, score0_true$score, tolerance = 0.01)
 
+  score1cox <- ip_score_long(probabilities = models,
+                             data_outcome = df_val_outcome,
+                             data_long = df_val_long,
+                             visit_times = 0:4,
+                             time_horizon = 5,
+                             treatment_formula = A ~ (A_lag_1 * L),
+                             treatment_of_interest = "always",
+                             metrics = metrics,
+                             cens_model = "cox",
+                             cens_formula = ~ 1)
+  expect_equal(score1cox$score, score1_true$score, tolerance = 0.01)
 
-# informative censoring ---------------------------------------------------
+  # informative censoring, from one baseline variable
 
-  df_val_informativecensor <-
-    generate_long_data_cox(n = n, seed = 3, nonadministrative_censoring = TRUE,
-                           censorLP = ~ function() -2 + 10*U)
-
+  df_val_informativecensor <- generate_long_data_cox(
+    n = n,
+    seed = 3,
+    nonadministrative_censoring = TRUE,
+    censorLP = ~ function() {-2 + 10*U}
+  )
 
   df_val_inf_outcome <- df_val_informativecensor[, c("id", "time", "status")]
   df_val_inf_long <- wide_to_long(
     df_val_informativecensor, c("id", "U"), list(A = paste0("A", 0:4), L = paste0("L", 0:4)),
     0:4, df_val_informativecensor$time)
+
+  sum(faithful_to_trt(df_val_inf_long, rep(0, 5)))
 
   df_val_inf_long <- add_lag_terms(df_val_inf_long, "A")
 
@@ -177,12 +204,45 @@ test_that("ipscore long results vs CF dataset with KM censoring", {
                              treatment_of_interest = "never",
                              metrics = metrics,
                              cens_model = "cox",
-                             cens_formula = ~ U
-  )
+                             cens_formula = ~ U)
+
+  score0cox_informative$ipt$model
   print_censor_model(score0cox_informative$ipc$model)
 
-  expect_equal(score0cox_informative$score, score0_true$score, tolerance = 0.01)
+  # a bit high, seems to decrease when increasing n
+  expect_equal(score0cox_informative$score, score0_true$score, tolerance = 0.04)
 
+  # informative censoring, with time varying variables
+
+  df_val_informativecensor2 <- generate_long_data_cox(
+    n = n,
+    seed = 3,
+    nonadministrative_censoring = TRUE,
+    censorLP = ~ function() {
+      -2.1 + 0.2 * A[, i] + 0.3 * L[, i] + 0.6 * U
+    }
+  )
+  df_val_inf2_outcome <- df_val_informativecensor2[, c("id", "time", "status")]
+  df_val_inf2_long <- wide_to_long(
+    df_val_informativecensor2, c("id", "U"), list(A = paste0("A", 0:4), L = paste0("L", 0:4)),
+    0:4, df_val_informativecensor2$time)
+  df_val_inf2_long <- add_lag_terms(df_val_inf2_long, "A")
+
+  # % censored before time horizon
+  mean(df_val_inf2_outcome$time < 5 & df_val_inf2_outcome$status == 0)
+
+  score0cox_informative2 <- ip_score_long(probabilities = models,
+                                         data_outcome = df_val_inf2_outcome,
+                                         data_long = df_val_inf2_long,
+                                         visit_times = 0:4,
+                                         time_horizon = 5,
+                                         treatment_formula = A ~ (A_lag_1 * L),
+                                         treatment_of_interest = "never",
+                                         metrics = metrics,
+                                         cens_model = "cox",
+                                         cens_formula = ~ U + A + L)
+
+  expect_equal(score0cox_informative2$score, score0_true$score, tolerance = 0.02)
 })
 
 

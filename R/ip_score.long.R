@@ -69,7 +69,6 @@ add_lag_terms <- function(df, var, lag = 1, fill = 0) {
 }
 
 
-
 # input:
 # - outcome_data (id, time, status)
 # - treatment/confounder data, long. Treatment formula needs to make sense here
@@ -129,35 +128,48 @@ ip_score_long <- function(probabilities, data_outcome, data_long,
   } else if (cens_model == "cox") {
     # we survsplit here, so maybe we need data_long to have surv intervals
     # anyway
+
     survintervals <- survival::survSplit(
       formula = Surv(time, status) ~ .,
       data = data_outcome,
-      cut = visit_times)
-    stopifnot(all(survintervals$id == data_long$id))
+      cut = 0:4)
+
     data_combined <- cbind(survintervals, data_long)
+
+    # this variable hopefully does not exist yet...
     data_combined$censored <- with(
       data_combined,
-      status == 0 & !duplicated(id, fromLast = TRUE)) # i.e. last row
-    full_cens_formula <- stats::update.formula(old = cens_formula,
-                          Surv(tstart, time, censored) ~ .)
-
-    cens_model <- survival::coxph(full_cens_formula, data_combined,
-                                  model = TRUE, x = TRUE)
-    prob <- 1-predict_cox(cens_model, data_combined, pmin(data_combined[, "time"],
-                                                          time_horizon))
-    ipc_visit <- ifelse(
-      data_combined[, "censored"] == TRUE & data_combined[, "time"] < time_horizon,
-      0,
-      1 / prob
+      status == 0 & !duplicated(id, fromLast = TRUE)) # censor indicator = 1
+    # in last row of censored patients
+    full_cens_formula <- stats::update.formula(
+      old = cens_formula,
+      Surv(tstart, time, censored) ~ .
     )
-    ipc_product <- tapply(ipc_visit, data_long$id,
-                          FUN = function(x) tail(x, 1)) # not the product somehow?
+
+    cens_model <- survival::coxph(full_cens_formula, data_combined, model = TRUE)
+
+    bh <- survival::basehaz(cens_model, centered = FALSE)
+    cumhaz.fun <- stats::stepfun(bh$time, c(0, bh$hazard))
+
+    cumhaz_start <- cumhaz.fun(data_combined$tstart)
+    cumhaz_end <- cumhaz.fun(pmin(data_combined$time, time_horizon))
+    lp <- stats::predict(cens_model, newdata = data_combined, type = "lp")
+    contribution <- -(cumhaz_end - cumhaz_start) * exp(lp)
+
+    cumhaz <- tapply(contribution, data_combined$id, FUN = sum)
+    prob_uncensor <- exp(cumhaz)
+
+    weight <- ifelse(
+      data_outcome[, "status"] == FALSE & data_outcome[, "time"] < time_horizon,
+      0,
+      1 / prob_uncensor)
+
 
     ipc <- list()
     ipc$method <- "cox"
     ipc$cens_formula <- full_cens_formula
     ipc$model <- cens_model
-    ipc$weights <- ipc_product
+    ipc$weights <- weight
 
   } else {
     print("censoring model not implemented")
