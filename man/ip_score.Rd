@@ -97,8 +97,27 @@ bootstrap is not possible.}
 \item{quiet}{If set to TRUE, don't print assumptions.}
 }
 \value{
-A list with performance metrics, of class 'ip_score", for which the
-print and plot methods are implemented.
+An object of class `ip_score`, for which the `print()` and `plot()`
+methods are implemented. The object is a nested list containing: \itemize{
+  \item `$score`, which contains the predictive performance in the 'counterfactual'
+  dataset.
+  \item `$outcome`, the observed outcome of the original dataset.
+  \item `$treatment`, the observed outcome of the original dataset.
+  \item `$predictions`, the predictions to be evaluated, i.e. the probability
+  of event for each patient, had their treatment been set to
+  treatment_of_interest
+  \item `$ipt`, method, model and inverse probability of treatment weights
+  (IPTW). These are NA for patients that are not in the pseudopopulation.
+  \item `$ipc`, method, model and inverse probability of censoring weights (IPCW).
+     these are NA for patients that were censored.
+  \item `$correct_trt`, binary vector indicating which subjects of the original
+     population followed the treatment of interest.
+  \item `$uncensored`, binary vector indicating which subjects of the original
+     population were uncensored, if applicable.
+  \item `$pseudopop`, binary vector indicating which subjects of the original
+     population were in the pseudopopulation. Equal to
+     `$correct_trt & $uncensored`.
+  }
 }
 \description{
 Estimates the predictive performance of predictions under interventions, by
@@ -129,9 +148,9 @@ appending calplot with a number indicating the number of knots, e.g.
 For the null model, the O/E ratio and the scaled Brier score, the mean
 predicted risk under the treatment of interest is required. This is computed
 by the weighted mean in the ('counterfactually' uncensored) pseudopopulation.
-For survival data, this null prediction could theoretically also be
-computed with a weighted Kaplan-Meier, which is supposed to be more
-efficient, but computationally a lot slower. Both methods are valid.
+For survival data, this null prediction could theoretically also be computed
+with a weighted Kaplan-Meier, which is supposed to be more efficient, but
+computationally a lot slower. Both methods are valid.
 
 Stabilized IPT-weigths are computed by estimating a null model for treatment.
 E.g. weights are \code{P(A = a) / P(A = a | L = l)}, if the given
