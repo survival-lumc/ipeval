@@ -123,13 +123,15 @@ assumptions <- function(x) {
 
   if (x$outcome$type == "binary") {
     pp("The pseudopopulation ($pseudopop) consists of ", sum(x$pseudopop),
-    " subjects who originally received treatment ",
+       " (", round(mean(x$pseudopop)*100,1),
+       "%) subjects who originally received treatment ",
     x$treatment$treatment_of_interest,
     ". These subjects are reweighted to represent the target population under a
       hypothetical intervention in which everyone received this treatment.")
   } else {
     pp("The pseudopopulation ($pseudopop) consists of ", sum(x$pseudopop),
-       " subjects who originally received treatment ",
+       " (", round(mean(x$pseudopop)*100,1),
+       "%) subjects who originally received treatment ",
        x$treatment$treatment_of_interest,
        " ($correct_trt) and remained uncensored ($uncensored). These subjects
        are reweighted to represent the target population under a hypothetical
@@ -155,14 +157,16 @@ assumptions <- function(x) {
      no interference between subjects.")
 
   if (x$outcome$type == "survival") {
-
     if (x$ipc$method == "KM") {
       pp("- Noninformative censoring. The censoring mechanism is completely
          independent of any variables.")
-    } else {
+    } else if (x$ipc$method == "cox") {
       pp("- Independent censoring: conditional on included variables, censoring
       is independent of the outcome process. Assess $ipc$weights[$pseudopop] for
          distribution of IPC-weights in the pseudopopulaton.")
+    } else {
+      pp("- The censoring mechanism is adjusted for by the manually specified
+         inverse probability of censoring weights (IPCW).")
     }
   }
 
@@ -186,7 +190,8 @@ assumptions <- function(x) {
     }
   } else {
 
-    pp("- The supplied IPT-weights are assumed to be valid.")
+    pp("- The supplied inverse probability of treatment weights (IPTW) are
+       assumed to be valid.")
 
   }
 

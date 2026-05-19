@@ -257,7 +257,7 @@ construct_ip_object <- function(outcome, treatment, predictions, ipt, ipc,
   if (ip_object$outcome$type == "survival") {
     ip_object$uncensored <- with(
       ip_object$outcome,
-      ! ( observed[, 1] >= time_horizon | status == 1 )
+      ! ( observed[, 1] >= time_horizon | observed[, 2] == 1 )
     )
     ip_object$pseudopop <- ip_object$correct_trt & ip_object$uncensored
   } else {
