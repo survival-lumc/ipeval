@@ -3,7 +3,7 @@ n <- 10000
 
 
 data <- data.frame(id = 1:n)
-data$L <- rnorm(n)
+data$L <- rnorm(n, 0.2, 5)
 eta2 <- 0.3 + 1.0*data$L
 eta3 <- -0.5 - 0.8*data$L
 
@@ -20,6 +20,15 @@ data$A <- sapply(1:n, function(i) {
 })
 
 model <- nnet::multinom(A ~ L, data = data)
+
+predict(model, type = "probs")
+
+
+
+class(model)
+
+predict.multinom()
+
 
 mean(predict(model) == 0)
 
