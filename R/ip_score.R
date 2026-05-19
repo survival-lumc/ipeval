@@ -24,6 +24,13 @@
 #' appending calplot with a number indicating the number of knots, e.g.
 #' \code{metrics = calplot10} for 10 knots.
 #'
+#' For the null model, the O/E ratio and the scaled Brier score, the mean
+#' predicted risk under the treatment of interest is required. This is computed
+#' by the weighted mean in the ('counterfactually' uncensored) pseudopopulation.
+#' For survival data, this null prediction could theoretically also be
+#' computed with a weighted Kaplan-Meier, which is supposed to be more
+#' efficient, but computationally a lot slower. Both methods are valid.
+#'
 #' Stabilized IPT-weigths are computed by estimating a null model for treatment.
 #' E.g. weights are \code{P(A = a) / P(A = a | L = l)}, if the given
 #' treatment_formula is \code{A ~ L}.
