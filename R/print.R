@@ -121,13 +121,30 @@ assumptions <- function(x) {
      (CF) dataset where everyone's treatment ", x$treatment$treatment_column,
      " was set to ", x$treatment$treatment_of_interest, ".")
 
+  if (x$outcome$type == "binary") {
+    pp("The pseudopopulation ($pseudopop) consists of ", sum(x$pseudopop),
+    " subjects who originally received treatment ",
+    x$treatment$treatment_of_interest,
+    ". These subjects are reweighted to represent the target population under a
+      hypothetical intervention in which everyone received this treatment.")
+  } else {
+    pp("The pseudopopulation ($pseudopop) consists of ", sum(x$pseudopop),
+       " subjects who originally received treatment ",
+       x$treatment$treatment_of_interest,
+       " (x$correct_trt) and remained uncensored (x$uncensored). These subjects
+       are reweighted to represent the target population under a hypothetical
+       intervention in which everyone received this treatment and remained
+       uncensored.")
+  }
+
   pp("The following assumptions must be satisfied for correct inference:")
 
   pp(" - Conditional exchangeability requires that the inverse probability of
   treatment weights are sufficient to adjust for confounding between treatment
      and outcome.")
 
-  pp("- Conditional positivity (assess $ipt$weights for outliers)")
+  pp("- Conditional positivity (assess $ipt$weights[$pseudopop] for distribution
+     of IPT-weights in the pseudopopulation)")
 
   pp("- Consistency (including no interference)")
 

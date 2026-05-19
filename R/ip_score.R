@@ -236,6 +236,7 @@ compute_metrics <- function(ip_object) {
   return(ip_object)
 }
 
+# TODO: documentation page for structure of ip_object?
 construct_ip_object <- function(outcome, treatment, predictions, ipt, ipc,
                                 metrics) {
 
@@ -249,6 +250,20 @@ construct_ip_object <- function(outcome, treatment, predictions, ipt, ipc,
   if (ip_object$outcome$type == "survival") {
     ip_object$ipc = ipc
   }
+  ip_object$correct_trt <- with(
+    ip_object$treatment,
+    observed == treatment_of_interest
+  )
+  if (ip_object$outcome$type == "survival") {
+    ip_object$uncensored <- with(
+      ip_object$outcome,
+      ! ( observed[, 1] >= time_horizon | status == 1 )
+    )
+    ip_object$pseudopop <- ip_object$correct_trt & ip_object$uncensored
+  } else {
+    ip_object$pseudopop <- ip_object$correct_trt
+  }
+
   class(ip_object) <- "ip_score"
   return(ip_object)
 }
