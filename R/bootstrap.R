@@ -7,7 +7,8 @@ bootstrap_iteration <- function(data, ip_object) {
   # copy ip_object but resample relevant items
   bs_outcome <- list(
     "observed" = ip_object$outcome$observed[bs_sample],
-    "type" = ip_object$outcome$type
+    "type" = ip_object$outcome$type,
+    "time_horizon" = ip_object$outcome$time_horizon
   )
   bs_trt <- list(
     "observed" = ip_object$treatment$observed[bs_sample],
@@ -20,7 +21,8 @@ bootstrap_iteration <- function(data, ip_object) {
     treatment_formula = ip_object$treatment$propensity_formula,
     data = data[bs_sample, ],
     stable_iptw = ip_object$ipt$method == "stabilized weights",
-    only_weights = TRUE
+    only_weights = TRUE,
+    treatment_of_interest = ip_object$treatment$treatment_of_interest
   )
 
   # if survival, compute ipcw and survival status at time horizon of sample

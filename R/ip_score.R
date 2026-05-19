@@ -190,7 +190,8 @@ ip_score <- function(object, data, outcome, treatment_formula,
                                        score_treatment$treatment_of_interest,
                                        score_outcome$time_horizon)
 
-  score_ipt <- get_iptw(treatment_formula, data, stable_iptw, iptw)
+  score_ipt <- get_iptw(treatment_formula, data, stable_iptw, iptw,
+                        treatment_of_interest = treatment_of_interest)
 
   if (score_outcome$type == "survival") {
     cens_formula <- combine_censoring_formula(cens_formula, substitute(outcome))
@@ -416,7 +417,7 @@ get_predictions <- function(object, data, treatment_column,
 }
 
 get_iptw <- function(treatment_formula, data, stable_iptw, iptw,
-                     only_weights = FALSE) {
+                     only_weights = FALSE, treatment_of_interest) {
   ipt <- list()
   ipt$method = "weights manually specified"
 
@@ -424,7 +425,7 @@ get_iptw <- function(treatment_formula, data, stable_iptw, iptw,
     ipt$method <- "binomial glm"
     ipt$confounders <- all.vars(treatment_formula)[-1]
     ipt$propensity_formula <- treatment_formula
-    iptw_object <- ipt_weights(data, treatment_formula)
+    iptw_object <- ipt_weights(data, treatment_formula, treatment_of_interest)
     ipt$model <- iptw_object$model
     iptw <- iptw_object$weights
 
@@ -432,7 +433,8 @@ get_iptw <- function(treatment_formula, data, stable_iptw, iptw,
       ipt$method <- "stabilized weights"
       stable_treatment_formula <-
         stats::update.formula(treatment_formula, . ~ 1)
-      sipt_object <- ipt_weights(data, stable_treatment_formula)
+      sipt_object <- ipt_weights(data, stable_treatment_formula,
+                                 treatment_of_interest)
       iptw <- 1/sipt_object$weights * iptw
       ipt$stable_model <- sipt_object$model
     }
