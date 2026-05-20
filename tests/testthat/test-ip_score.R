@@ -552,8 +552,8 @@ test_that("ip_score metrics equal to unobserved CF metrics, surv, KM censor, sta
     metrics = c("auc", "brier", "oeratio")
   )
 
-  stable_min <- min(ip_score$ipt$weights)
-  stable_max <- max(ip_score$ipt$weights)
+  stable_min <- min(ip_score$ipt$weights, na.rm = TRUE)
+  stable_max <- max(ip_score$ipt$weights, na.rm = TRUE)
 
   ip_score_unstable <- ip_score(
     data = data,
@@ -568,8 +568,8 @@ test_that("ip_score metrics equal to unobserved CF metrics, surv, KM censor, sta
     null_model = FALSE
   )
 
-  unstable_min <- min(ip_score_unstable$ipt$weights)
-  unstable_max <- max(ip_score_unstable$ipt$weights)
+  unstable_min <- min(ip_score_unstable$ipt$weights, na.rm = TRUE)
+  unstable_max <- max(ip_score_unstable$ipt$weights, na.rm = TRUE)
 
   expect_true(stable_min <= unstable_min)
   expect_true(stable_max <= unstable_max)
@@ -723,7 +723,7 @@ test_that("null model binary outcome", {
     )
   )
 
-  nullmodel <- glm(Y0 ~ 1, data = data)
+  nullmodel <- lm(Y0 ~ 1, data = data)
 
   ip_score <- ip_score(model, data, Y, A ~ L, 0,
                      metrics = c("brier", "scaled_brier"), null_model = TRUE)

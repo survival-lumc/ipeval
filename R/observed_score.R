@@ -66,6 +66,7 @@ observed_score <- function(object, data, outcome,
     outcome = extract_outcome(data, substitute(outcome)),
     treatment = score_trt,
     predictions = score_predictions,
+    pseudopop = list(ids = rep(TRUE, nrow(data))),
     ipt = list("weights" = rep(1, nrow(data))),
     ipc = NULL,
     metrics = metrics

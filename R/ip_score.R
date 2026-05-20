@@ -24,6 +24,13 @@
 #' appending calplot with a number indicating the number of knots, e.g.
 #' \code{metrics = calplot10} for 10 knots.
 #'
+#' For the null model, the O/E ratio and the scaled Brier score, the mean
+#' predicted risk under the treatment of interest is required. This is computed
+#' by the weighted mean in the ('counterfactually' uncensored) pseudopopulation.
+#' For survival data, this null prediction could theoretically also be computed
+#' with a weighted Kaplan-Meier, which is supposed to be more efficient, but
+#' computationally a lot slower. Both methods are valid.
+#'
 #' Stabilized IPT-weigths are computed by estimating a null model for treatment.
 #' E.g. weights are \code{P(A = a) / P(A = a | L = l)}, if the given
 #' treatment_formula is \code{A ~ L}.
@@ -85,8 +92,27 @@
 #'   bootstrap is not possible.
 #' @param quiet If set to TRUE, don't print assumptions.
 #'
-#' @returns A list with performance metrics, of class 'ip_score", for which the
-#' print and plot methods are implemented.
+#' @returns An object of class `ip_score`, for which the `print()` and `plot()`
+#' methods are implemented. The object is a nested list containing: \itemize{
+#'   \item `$score`, which contains the predictive performance in the 'counterfactual'
+#'   dataset.
+#'   \item `$outcome`, the observed outcome of the original dataset.
+#'   \item `$treatment`, the observed outcome of the original dataset.
+#'   \item `$predictions`, the predictions to be evaluated, i.e. the probability
+#'   of event for each patient, had their treatment been set to
+#'   treatment_of_interest.
+#'   \item `$ipt`, method, model and inverse probability of treatment weights
+#'   (IPTW). These are NA for patients that are not in the pseudopopulation.
+#'   \item `$ipc`, method, model and inverse probability of censoring weights (IPCW).
+#'      these are NA for patients that were censored.
+#'   \item `$correct_trt`, binary vector indicating which subjects of the original
+#'      population followed the treatment of interest.
+#'   \item `$uncensored`, binary vector indicating which subjects of the original
+#'      population were uncensored, if applicable.
+#'   \item `$pseudopop`, binary vector indicating which subjects of the original
+#'      population were in the pseudopopulation. Equal to
+#'      `$correct_trt & $uncensored`.
+#'   }
 #'
 #' @export
 #'
@@ -164,7 +190,10 @@ ip_score <- function(object, data, outcome, treatment_formula,
                                        score_treatment$treatment_of_interest,
                                        score_outcome$time_horizon)
 
-  score_ipt <- get_iptw(treatment_formula, data, stable_iptw, iptw)
+  score_pseudopop <- get_pseudopop(score_outcome, score_treatment)
+
+  score_ipt <- get_iptw(treatment_formula, data, stable_iptw, iptw,
+                        treatment_of_interest = treatment_of_interest)
 
   if (score_outcome$type == "survival") {
     cens_formula <- combine_censoring_formula(cens_formula, substitute(outcome))
@@ -174,13 +203,14 @@ ip_score <- function(object, data, outcome, treatment_formula,
   }
 
   if (null_model) {
-    score_predictions <- fit_null(score_treatment, score_outcome,
+    score_predictions <- fit_null(score_pseudopop, score_outcome,
                                   score_predictions, score_ipt, score_ipc)
   }
 
   # make object
   ip_object <- construct_ip_object(score_outcome, score_treatment,
-                                   score_predictions, score_ipt, score_ipc,
+                                   score_predictions, score_pseudopop,
+                                   score_ipt, score_ipc,
                                    metrics)
 
   # compute metrics
@@ -214,7 +244,6 @@ compute_metrics <- function(ip_object) {
     weights <- ip_object$ipt$weights
     outcome <- ip_object$outcome$observed
   }
-
   for (m in ip_object$metrics) {
     metrics[[m]] <- sapply(
       X = ip_object$predictions,
@@ -222,9 +251,8 @@ compute_metrics <- function(ip_object) {
         cf_metric(
           m,
           obs_outcome = outcome,
-          obs_trt = ip_object$treatment$observed,
           cf_pred = x,
-          cf_trt = ip_object$treatment$treatment_of_interest,
+          pseudo_i = ip_object$pseudopop$ids,
           ipw = weights
         )
       }
@@ -236,19 +264,45 @@ compute_metrics <- function(ip_object) {
   return(ip_object)
 }
 
-construct_ip_object <- function(outcome, treatment, predictions, ipt, ipc,
-                                metrics) {
+get_pseudopop <- function(score_outcome, score_treatment) {
+  pseudopop_list <- list()
+
+  correct_trt <- with(score_treatment, observed == treatment_of_interest)
+
+  if (score_outcome$type == "survival") {
+    uncensored <- with(
+      score_outcome,
+      observed[, 1] >= time_horizon | observed[, 2] == 1
+    )
+    pseudopop <- correct_trt & uncensored
+
+    pseudopop_list$ids <- pseudopop
+    pseudopop_list$correct_trt <- correct_trt
+    pseudopop_list$uncensored <- uncensored
+
+  } else {
+    pseudopop_list$ids <- correct_trt
+    pseudopop_list$correct_trt <- correct_trt
+  }
+  return(pseudopop_list)
+}
+
+# TODO: documentation page for structure of ip_object?
+construct_ip_object <- function(outcome, treatment, predictions, pseudopop,
+                                ipt, ipc, metrics) {
 
   ip_object <- list(
     "outcome" = outcome,
     "treatment" = treatment,
     "predictions" = predictions,
+    "pseudopop" = pseudopop,
     "metrics" = metrics,
     "ipt" = ipt
   )
   if (ip_object$outcome$type == "survival") {
     ip_object$ipc = ipc
   }
+
   class(ip_object) <- "ip_score"
   return(ip_object)
 }
@@ -375,7 +429,7 @@ get_predictions <- function(object, data, treatment_column,
 }
 
 get_iptw <- function(treatment_formula, data, stable_iptw, iptw,
-                     only_weights = FALSE) {
+                     only_weights = FALSE, treatment_of_interest) {
   ipt <- list()
   ipt$method = "weights manually specified"
 
@@ -383,7 +437,7 @@ get_iptw <- function(treatment_formula, data, stable_iptw, iptw,
     ipt$method <- "binomial glm"
     ipt$confounders <- all.vars(treatment_formula)[-1]
     ipt$propensity_formula <- treatment_formula
-    iptw_object <- ipt_weights(data, treatment_formula)
+    iptw_object <- ipt_weights(data, treatment_formula, treatment_of_interest)
     ipt$model <- iptw_object$model
     iptw <- iptw_object$weights
 
@@ -391,7 +445,8 @@ get_iptw <- function(treatment_formula, data, stable_iptw, iptw,
       ipt$method <- "stabilized weights"
       stable_treatment_formula <-
         stats::update.formula(treatment_formula, . ~ 1)
-      sipt_object <- ipt_weights(data, stable_treatment_formula)
+      sipt_object <- ipt_weights(data, stable_treatment_formula,
+                                 treatment_of_interest)
       iptw <- 1/sipt_object$weights * iptw
       ipt$stable_model <- sipt_object$model
     }
@@ -426,27 +481,21 @@ get_ipcw <- function(cens_formula, data, cens_model, time_horizon,
   }
 }
 
-fit_null <- function(score_treatment, score_outcome, score_predictions,
+fit_null <- function(score_pseudopop, score_outcome, score_predictions,
                      score_ipt, score_ipc) {
   # fit a null on the pseudo-population that received treatment of
-  # interest, and add it to the score_predictions
-  pseudo_ids <- score_treatment$observed == score_treatment$treatment_of_interest
+  # interest and remained uncensored. Add it to score_predictions.
+  pseudo_ids <- score_pseudopop[[1]]
   n <- length(score_outcome$observed)
   if (score_outcome$type == "binary") {
-    null_prediction <- stats::weighted.mean(
-      score_outcome$observed[pseudo_ids],
-      score_ipt$weights[pseudo_ids]
-    )
+    outcomes <- score_outcome$observed[pseudo_ids]
+    weights <- score_ipt$weights[pseudo_ids]
   } else {
-    # fit null model in a pseudopopuluation where everyone had treatment of
-    # interest and remained uncensored
-    uncensor_ids <- score_ipc$weights != 0
-    cf_ids <- pseudo_ids & uncensor_ids
-    null_prediction <- stats::weighted.mean(
-      score_outcome$status_at_horizon[cf_ids],
-      score_ipt$weights[cf_ids]*score_ipc$weights[cf_ids]
-    )
+    outcomes <- score_outcome$status_at_horizon[pseudo_ids]
+    weights <- score_ipt$weights[pseudo_ids]*score_ipc$weights[pseudo_ids]
   }
+
+  null_prediction <- stats::weighted.mean(outcomes, weights)
   null_preds <- rep(null_prediction, n)
 
   score_predictions <- c(

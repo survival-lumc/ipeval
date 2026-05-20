@@ -21,12 +21,12 @@ test_that("ipc KM simple correct", {
   expect_equal(
     ipc_weights(data, survival::Surv(my_time, my_status) ~ 1,
                 type = "KM", time_horizon = 2.5)$weights,
-    c(1,0,2)
+    c(1,NA,2)
   )
   expect_equal(
     ipc_weights(data, survival::Surv(my_time, my_status) ~ 1,
                 type = "KM", time_horizon = 3.5)$weights,
-    c(1,0,2)
+    c(1,NA,2)
   )
 
   data <- data.frame(
@@ -42,17 +42,17 @@ test_that("ipc KM simple correct", {
   expect_equal(
     ipc_weights(data, survival::Surv(my_time, my_status) ~ 1,
                 type = "KM", time_horizon = 1.5)$weights,
-    c(0,1.5,1.5)
+    c(NA,1.5,1.5)
   )
   expect_equal(
     ipc_weights(data, survival::Surv(my_time, my_status) ~ 1,
                 type = "KM", time_horizon = 2.5)$weights,
-    c(0,1.5,1.5)
+    c(NA,1.5,1.5)
   )
   expect_equal(
     ipc_weights(data, survival::Surv(my_time, my_status) ~ 1,
                 type = "KM", time_horizon = 3.5)$weights,
-    c(0,1.5,0)
+    c(NA,1.5,NA)
   )
 
 })
@@ -77,7 +77,7 @@ test_that("ipc ties", {
 
   expect_equal(
     ipc_weights(data, survival::Surv(time, status) ~ 1, type = "KM", time_horizon = 2.1)$weights,
-    c(1,0,1,2)
+    c(1,NA,1,2)
   )
 
   data <- data.frame(
@@ -96,7 +96,7 @@ test_that("ipc ties", {
 
   expect_equal(
     ipc_weights(data, survival::Surv(time, status) ~ 1, type = "KM", time_horizon = 2.1)$weights,
-    c(1,1,0,2)
+    c(1,1,NA,2)
   )
 
 })
@@ -141,7 +141,7 @@ test_that(
     df_dev$ipc <- ipc_weights(df_dev, survival::Surv(time, status) ~ 1, "KM", horizon)$weights
     model <- survival::coxph(
       survival::Surv(time_at_horizon, status_at_horizon) ~ L1 + L2 + P1 + P2,
-      data = df_dev[df_dev$ipc > 0, ], weights = ipc)
+      data = df_dev[!is.na(df_dev$ipc), ], weights = ipc)
     expect_equal(
       unname(model$coefficients),
       c(0.5, 0.3, 0.2, 0.4),
@@ -152,41 +152,21 @@ test_that(
 
     score <- riskRegression::Score(list(df_dev$pred), Hist(failuretime, A) ~ 1,
                                    data = df_dev, times = horizon, null.model = F)
+    score_oeratio <- mean(df_dev$pred)/mean(df_dev$status_at_horizon_uncensored)
+
+    uncensored <- df_dev$time >= horizon | df_dev$status == 1
+
+    ipc_metrics <- with(df_dev, {
+      brier <- cf_brier(status_at_horizon, pred, uncensored, ipc)
+      auc <- cf_auc(status_at_horizon, pred, uncensored, ipc)
+      oeratio <- cf_oeratio(status_at_horizon, pred, uncensored, ipc)
+      list(brier, auc, oeratio)
+    })
 
 
-    expect_equal(
-      cf_brier(
-        df_dev$status_at_horizon,
-        df_dev$A,
-        df_dev$pred,
-        1,
-        df_dev$ipc
-      ),
-      score$Brier$score$Brier,
-      tolerance = 0.01
-    )
-    expect_equal(
-      cf_auc(
-        df_dev$status_at_horizon,
-        df_dev$A,
-        df_dev$pred,
-        1,
-        df_dev$ipc
-      ),
-      score$AUC$score$AUC,
-      tolerance = 0.01
-    )
-    expect_equal(
-      cf_oeratio(
-        df_dev$status_at_horizon,
-        df_dev$A,
-        df_dev$pred,
-        1,
-        df_dev$ipc
-      ),
-      mean(df_dev$pred)/mean(df_dev$status_at_horizon_uncensored),
-      tolerance = 0.01
-    )
+    expect_equal(ipc_metrics[[1]], score$Brier$score$Brier, tolerance = 0.01)
+    expect_equal(ipc_metrics[[2]], score$AUC$score$AUC, tolerance = 0.01)
+    expect_equal(ipc_metrics[[3]], score_oeratio, tolerance = 0.01)
   })
 
 test_that(
@@ -239,43 +219,19 @@ test_that(
 
     score <- riskRegression::Score(list(data$pred), Hist(failuretime, A) ~ 1,
                                    data = data, times = horizon, null.model = F)
+    score_oeratio <- mean(data$pred)/mean(data$status_at_horizon_uncensored)
 
-    # TODO: should this be status_at_horizon?
+    uncensored <- data$time >= horizon | data$status == 1
 
-    expect_equal(
-      cf_brier(
-        data$status_at_horizon,
-        data$A,
-        data$pred,
-        1,
-        data$ipc
-      ),
-      score$Brier$score$Brier,
-      tolerance = 0.01
-    )
-    expect_equal(
-      cf_auc(
-        data$status_at_horizon,
-        data$A,
-        data$pred,
-        1,
-        data$ipc
-      ),
-      score$AUC$score$AUC,
-      tolerance = 0.01
-    )
-    expect_equal(
-      cf_oeratio(
-        data$status_at_horizon,
-        data$A,
-        data$pred,
-        1,
-        data$ipc
-      ),
-      mean(data$pred)/mean(data$status_at_horizon_uncensored),
-      tolerance = 0.01
-    )
+    ipc_metrics <- with(data, {
+      brier <- cf_brier(status_at_horizon, pred, uncensored, ipc)
+      auc <- cf_auc(status_at_horizon, pred, uncensored, ipc)
+      oeratio <- cf_oeratio(status_at_horizon, pred, uncensored, ipc)
+      list(brier, auc, oeratio)
+    })
 
-
+    expect_equal(ipc_metrics[[1]], score$Brier$score$Brier, tolerance = 0.01)
+    expect_equal(ipc_metrics[[2]], score$AUC$score$AUC, tolerance = 0.01)
+    expect_equal(ipc_metrics[[3]], score_oeratio, tolerance = 0.01)
   }
 )
