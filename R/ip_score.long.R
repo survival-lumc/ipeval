@@ -79,7 +79,7 @@ ip_score_long <- function(probabilities, data_outcome, data_long,
                           treatment_formula, treatment_of_interest,
                           metrics = c("auc", "brier", "oeratio", "calplot"),
                           visit_times, time_horizon, cens_model = "KM",
-                          cens_formula = ~ 1, null_model = TRUE) {
+                          cens_formula = ~ 1, null_model = TRUE, stable_iptw = FALSE) {
 
   # assert:
   # - probabilities and data outcome same length
@@ -101,6 +101,13 @@ ip_score_long <- function(probabilities, data_outcome, data_long,
 
   # create get_iptw long fct instead of this
   ipt_visit <- ipt_weights(data_long, treatment_formula)
+  if (stable_iptw == TRUE) {
+    ipt_visit_stable <- ipt_weights(data_long, A ~ A_lag_1)
+    print(print_model(ipt_visit_stable$model))
+
+    ipt_visit$weights <- (1/ipt_visit_stable$weights)*ipt_visit$weights
+  }
+
   ipt_product <- tapply(ipt_visit$weights, data_long$id,
                         FUN = prod)
 
