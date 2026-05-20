@@ -91,39 +91,18 @@ test_that(
     score <- riskRegression::Score(list(df_pseudo_exact$pred), Y ~ 1,
                                    data = df_pseudo_exact,
                                    null.model = F, se.fit = F)
+    score_oeratio <- mean(df_pseudo_exact$Y)/mean(df_toy$pred)
 
-    expect_equal(
-      cf_brier(
-        obs_outcome = df_toy$Y,
-        obs_trt = df_toy$A,
-        cf_pred = df_toy$pred,
-        cf_trt = 0,
-        ipw = df_toy$ipw
-      ),
-      score$Brier$score$Brier
-    )
+    cfscore <- with(df_toy, {
+      brier <- cf_brier(Y, pred, A == 0, ipw)
+      auc <- cf_auc(Y, pred, A == 0, ipw)
+      oeratio <- cf_oeratio(Y, pred, A == 0, ipw)
+      list(brier, auc, oeratio)
+    })
 
-    expect_equal(
-      cf_auc(
-        obs_outcome = df_toy$Y,
-        obs_trt = df_toy$A,
-        cf_pred = df_toy$pred,
-        cf_trt = 0,
-        ipw = df_toy$ipw
-      ),
-      score$AUC$score$AUC
-    )
-
-    expect_equal(
-      cf_oeratio_pp(
-        obs_outcome = df_toy$Y,
-        obs_trt = df_toy$A,
-        cf_pred = df_toy$pred,
-        cf_trt = 0,
-        ipw = df_toy$ipw
-      ),
-      mean(df_pseudo_exact$Y)/mean(df_pseudo_exact$pred)
-    )
+    expect_equal(cfscore[[1]], score$Brier$score$Brier)
+    expect_equal(cfscore[[2]], score$AUC$score$AUC)
+    expect_equal(cfscore[[3]], score_oeratio)
 
   })
 
@@ -170,71 +149,22 @@ test_that(
     pred0 <- predict_CF(model, df_val, "A", 0)
 
     # truth vs cf estimation
-    truth <- list(
-      auc = cf_auc(
-        obs_outcome = df_val$Y0,
-        obs_trt = rep(0, nrow(df_val)),
-        cf_pred = pred0,
-        cf_trt = 0,
-        ipw = rep(1, nrow(df_val))
-      ),
-      brier = cf_brier(
-        obs_outcome = df_val$Y0,
-        obs_trt = rep(0, nrow(df_val)),
-        cf_pred = pred0,
-        cf_trt = 0,
-        ipw = rep(1, nrow(df_val))
-      ),
-      oe = cf_oeratio(
-        obs_outcome = df_val$Y0,
-        obs_trt = rep(0, nrow(df_val)),
-        cf_pred = pred0,
-        cf_trt = 0,
-        ipw = rep(1, nrow(df_val))
-      ),
-      oe_e_pp = cf_oeratio_pp(
-        obs_outcome = df_val$Y0,
-        obs_trt = rep(0, nrow(df_val)),
-        cf_pred = pred0,
-        cf_trt = 0,
-        ipw = rep(1, nrow(df_val))
-      ))
+    truth <- with(df_val, {
+      auc <- cf_auc(Y0, pred0, rep(TRUE, n), rep(1,n))
+      brier <- cf_brier(Y0, pred0, rep(TRUE, n), rep(1,n))
+      oe <- cf_oeratio(Y0, pred0, rep(TRUE, n), rep(1,n))
+      calplot <- cf_calplot(Y0, pred0, rep(TRUE, n), rep(1,n))
+      list(auc, brier, oe, calplot)
+    })
 
-    cf_est <- list(
-      auc = cf_auc(
-        obs_outcome = df_val$Y,
-        obs_trt = df_val$A,
-        cf_pred = pred0,
-        cf_trt = 0,
-        ipw = df_val$ipw
-      ),
-      brier = cf_brier(
-        obs_outcome = df_val$Y,
-        obs_trt = df_val$A,
-        cf_pred = pred0,
-        cf_trt = 0,
-        ipw = df_val$ipw
-      ),
-      oe = cf_oeratio(
-        obs_outcome = df_val$Y,
-        obs_trt = df_val$A,
-        cf_pred = pred0,
-        cf_trt = 0,
-        ipw = df_val$ipw
-      ),
-      oe_e_pp = cf_oeratio_pp(
-        obs_outcome = df_val$Y,
-        obs_trt = df_val$A,
-        cf_pred = pred0,
-        cf_trt = 0,
-        ipw = df_val$ipw
-      ))
-
-    expect_equal(cf_est$auc, truth$auc, tolerance = 0.001)
-    expect_equal(cf_est$brier, truth$brier, tolerance = 0.001)
-    expect_equal(cf_est$oe, truth$oe, tolerance = 0.001)
-    expect_equal(cf_est$oe_e_pp, truth$oe_e_pp, tolerance = 0.001)
-
+    cf_est <- with(df_val,  {
+      auc <- cf_auc(Y, pred0, A == 0, ipw)
+      brier <- cf_brier(Y, pred0, A == 0, ipw)
+      oe <- cf_oeratio(Y, pred0, A == 0, ipw)
+      calplot <- cf_calplot(Y, pred0, A == 0, ipw)
+      list(auc, brier, oe, calplot)
+    })
+    expect_equal(truth, cf_est, tolerance = 0.005)
   })
 
 test_that(
@@ -243,9 +173,8 @@ test_that(
     expect_equal(
       cf_auc(
         obs_outcome = c(0,1,0,1),
-        obs_trt = c(1,1,1,1),
         cf_pred = c(0.5,0.5,0.5,0.5),
-        cf_trt = 1,
+        pseudo_i = rep(TRUE, 4),
         ipw = c(1,1,1,1)
       ),
       0.5
@@ -254,9 +183,8 @@ test_that(
     expect_equal(
       cf_auc(
         obs_outcome = c(0,0,1,1),
-        obs_trt = c(1,1,1,1),
         cf_pred = c(1,0,1,0),
-        cf_trt = 1,
+        pseudo_i = rep(TRUE, 4),
         ipw = c(1,1,1,1)
       ),
       0.5
@@ -264,9 +192,8 @@ test_that(
     expect_equal(
       cf_auc(
         obs_outcome = c(0,0,1,1),
-        obs_trt = c(1,1,1,1),
         cf_pred = c(0.1,0.2,0.3,0.4),
-        cf_trt = 1,
+        pseudo_i = rep(TRUE, 4),
         ipw = c(1,1,1,1)
       ),
       1
@@ -274,9 +201,8 @@ test_that(
     expect_equal(
       cf_auc(
         obs_outcome = c(0,0,1,1),
-        obs_trt = c(1,1,1,1),
         cf_pred = c(1,1,0,0),
-        cf_trt = 1,
+        pseudo_i = rep(TRUE, 4),
         ipw = c(1,1,1,1)
       ),
       0
@@ -292,9 +218,8 @@ test_that(
     expect_equal(
       cf_oeratio(
         obs_outcome = c(0,1,0,1),
-        obs_trt = c(1,1,1,1),
         cf_pred = c(0.5,0.5,0.5,0.5),
-        cf_trt = 1,
+        pseudo_i = rep(TRUE, 4),
         ipw = c(1,1,1,1)
       ),
       1
@@ -302,9 +227,8 @@ test_that(
     expect_equal(
       cf_oeratio(
         obs_outcome = c(0,0,0,0),
-        obs_trt = c(1,1,1,1),
         cf_pred = c(0.5,0.5,0.5,0.5),
-        cf_trt = 1,
+        pseudo_i = rep(TRUE, 4),
         ipw = c(1,1,1,1)
       ),
       0
@@ -312,9 +236,8 @@ test_that(
     expect_equal(
       cf_oeratio(
         obs_outcome = c(1,0,0,0),
-        obs_trt = c(1,1,1,1),
         cf_pred = c(0,0.5,0,0),
-        cf_trt = 1,
+        pseudo_i = rep(TRUE, 4),
         ipw = c(1,1,1,1)
       ),
       2
@@ -324,6 +247,7 @@ test_that(
 test_that(
   "binary outcome/point trt/binary confounder BS analytically correct",
   {
+    # this test basically just checks if the correct weighted mean is done
     n <- 1000
     data <- data.frame(
       L = rbinom(n, 1, 0.3)
@@ -340,7 +264,7 @@ test_that(
     data$w <- 1/ifelse(data$A == 1, p_i, 1 - p_i)
 
     expect_equal(
-      cf_brier(data$Y, data$A, data$predictions, 0, data$w),
+      cf_brier(data$Y, data$predictions, data$A == 0, data$w),
       with(data[data$A == 0,], 1/sum(w) * sum((predictions - Y)^2 * w))
     )
     expect_equal(

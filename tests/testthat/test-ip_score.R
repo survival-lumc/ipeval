@@ -723,7 +723,7 @@ test_that("null model binary outcome", {
     )
   )
 
-  nullmodel <- glm(Y0 ~ 1, data = data)
+  nullmodel <- lm(Y0 ~ 1, data = data)
 
   ip_score <- ip_score(model, data, Y, A ~ L, 0,
                      metrics = c("brier", "scaled_brier"), null_model = TRUE)

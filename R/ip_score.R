@@ -190,6 +190,8 @@ ip_score <- function(object, data, outcome, treatment_formula,
                                        score_treatment$treatment_of_interest,
                                        score_outcome$time_horizon)
 
+  score_pseudopop <- get_pseudopop(score_outcome, score_treatment)
+
   score_ipt <- get_iptw(treatment_formula, data, stable_iptw, iptw,
                         treatment_of_interest = treatment_of_interest)
 
@@ -201,13 +203,14 @@ ip_score <- function(object, data, outcome, treatment_formula,
   }
 
   if (null_model) {
-    score_predictions <- fit_null(score_treatment, score_outcome,
+    score_predictions <- fit_null(score_pseudopop, score_outcome,
                                   score_predictions, score_ipt, score_ipc)
   }
 
   # make object
   ip_object <- construct_ip_object(score_outcome, score_treatment,
-                                   score_predictions, score_ipt, score_ipc,
+                                   score_predictions, score_pseudopop,
+                                   score_ipt, score_ipc,
                                    metrics)
 
   # compute metrics
@@ -241,7 +244,6 @@ compute_metrics <- function(ip_object) {
     weights <- ip_object$ipt$weights
     outcome <- ip_object$outcome$observed
   }
-
   for (m in ip_object$metrics) {
     metrics[[m]] <- sapply(
       X = ip_object$predictions,
@@ -249,9 +251,8 @@ compute_metrics <- function(ip_object) {
         cf_metric(
           m,
           obs_outcome = outcome,
-          obs_trt = ip_object$treatment$observed,
           cf_pred = x,
-          cf_trt = ip_object$treatment$treatment_of_interest,
+          pseudo_i = ip_object$pseudopop$ids,
           ipw = weights
         )
       }
@@ -263,32 +264,43 @@ compute_metrics <- function(ip_object) {
   return(ip_object)
 }
 
+get_pseudopop <- function(score_outcome, score_treatment) {
+  pseudopop_list <- list()
+
+  correct_trt <- with(score_treatment, observed == treatment_of_interest)
+
+  if (score_outcome$type == "survival") {
+    uncensored <- with(
+      score_outcome,
+      observed[, 1] >= time_horizon | observed[, 2] == 1
+    )
+    pseudopop <- correct_trt & uncensored
+
+    pseudopop_list$ids <- pseudopop
+    pseudopop_list$correct_trt <- correct_trt
+    pseudopop_list$uncensored <- uncensored
+
+  } else {
+    pseudopop_list$ids <- correct_trt
+    pseudopop_list$correct_trt <- correct_trt
+  }
+  return(pseudopop_list)
+}
+
 # TODO: documentation page for structure of ip_object?
-construct_ip_object <- function(outcome, treatment, predictions, ipt, ipc,
-                                metrics) {
+construct_ip_object <- function(outcome, treatment, predictions, pseudopop,
+                                ipt, ipc, metrics) {
 
   ip_object <- list(
     "outcome" = outcome,
     "treatment" = treatment,
     "predictions" = predictions,
+    "pseudopop" = pseudopop,
     "metrics" = metrics,
     "ipt" = ipt
   )
   if (ip_object$outcome$type == "survival") {
     ip_object$ipc = ipc
-  }
-  ip_object$correct_trt <- with(
-    ip_object$treatment,
-    observed == treatment_of_interest
-  )
-  if (ip_object$outcome$type == "survival") {
-    ip_object$uncensored <- with(
-      ip_object$outcome,
-      ! ( observed[, 1] >= time_horizon | observed[, 2] == 1 )
-    )
-    ip_object$pseudopop <- ip_object$correct_trt & ip_object$uncensored
-  } else {
-    ip_object$pseudopop <- ip_object$correct_trt
   }
 
   class(ip_object) <- "ip_score"
@@ -469,27 +481,21 @@ get_ipcw <- function(cens_formula, data, cens_model, time_horizon,
   }
 }
 
-fit_null <- function(score_treatment, score_outcome, score_predictions,
+fit_null <- function(score_pseudopop, score_outcome, score_predictions,
                      score_ipt, score_ipc) {
   # fit a null on the pseudo-population that received treatment of
-  # interest, and add it to the score_predictions
-  pseudo_ids <- score_treatment$observed == score_treatment$treatment_of_interest
+  # interest and remained uncensored. Add it to score_predictions.
+  pseudo_ids <- score_pseudopop[[1]]
   n <- length(score_outcome$observed)
   if (score_outcome$type == "binary") {
-    null_prediction <- stats::weighted.mean(
-      score_outcome$observed[pseudo_ids],
-      score_ipt$weights[pseudo_ids]
-    )
+    outcomes <- score_outcome$observed[pseudo_ids]
+    weights <- score_ipt$weights[pseudo_ids]
   } else {
-    # fit null model in a pseudopopuluation where everyone had treatment of
-    # interest and remained uncensored
-    uncensor_ids <- score_ipc$weights != 0
-    cf_ids <- pseudo_ids & uncensor_ids
-    null_prediction <- stats::weighted.mean(
-      score_outcome$status_at_horizon[cf_ids],
-      score_ipt$weights[cf_ids]*score_ipc$weights[cf_ids]
-    )
+    outcomes <- score_outcome$status_at_horizon[pseudo_ids]
+    weights <- score_ipt$weights[pseudo_ids]*score_ipc$weights[pseudo_ids]
   }
+
+  null_prediction <- stats::weighted.mean(outcomes, weights)
   null_preds <- rep(null_prediction, n)
 
   score_predictions <- c(

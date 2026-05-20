@@ -122,15 +122,15 @@ assumptions <- function(x) {
      " was set to ", x$treatment$treatment_of_interest, ".")
 
   if (x$outcome$type == "binary") {
-    pp("The pseudopopulation ($pseudopop) consists of ", sum(x$pseudopop),
-       " (", round(mean(x$pseudopop)*100,1),
+    pp("The pseudopopulation ($pseudopop) consists of ", sum(x$pseudopop$ids),
+       " (", round(mean(x$pseudopop$ids)*100,1),
        "%) subjects who originally received treatment ",
     x$treatment$treatment_of_interest,
     ". These subjects are reweighted to represent the target population under a
       hypothetical intervention in which everyone received this treatment.")
   } else {
-    pp("The pseudopopulation ($pseudopop) consists of ", sum(x$pseudopop),
-       " (", round(mean(x$pseudopop)*100,1),
+    pp("The pseudopopulation ($pseudopop) consists of ", sum(x$pseudopop$ids),
+       " (", round(mean(x$pseudopop$ids)*100,1),
        "%) subjects who originally received treatment ",
        x$treatment$treatment_of_interest,
        " ($correct_trt) and remained uncensored ($uncensored). These subjects
@@ -149,7 +149,7 @@ assumptions <- function(x) {
      probability of treatment weights (IPTW), there are no unmeasured
      confounders of treatment assignment and outcome.")
 
-  pp("- Conditional positivity (assess $ipt$weights[$pseudopop] for distribution
+  pp("- Conditional positivity (assess $ipt$weights[$pseudopop$ids] for distribution
      of IPT-weights in the pseudopopulation).")
 
   pp("- Consistency: the observed outcome under the received treatment equals
@@ -162,7 +162,7 @@ assumptions <- function(x) {
          independent of any variables.")
     } else if (x$ipc$method == "cox") {
       pp("- Independent censoring: conditional on included variables, censoring
-      is independent of the outcome process. Assess $ipc$weights[$pseudopop] for
+      is independent of the outcome process. Assess $ipc$weights[$pseudopop$ids] for
          distribution of IPC-weights in the pseudopopulaton.")
     } else {
       pp("- The censoring mechanism is adjusted for by the manually specified

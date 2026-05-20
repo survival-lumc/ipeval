@@ -38,11 +38,11 @@ ipc_weights <- function(data, formula, type, time_horizon) {
     stop("cens.model ", type, " not implemented")
   )
 
-  # if censored before time horizon, weight is 0,
+  # if censored before time horizon, weight is NA,
   # else, weight is 1/probability uncensored at event/time horizon
   w <- ifelse(
     y[, "status"] == 0 & y[, "time"] < time_horizon,
-    0,
+    NA,
     1 / p_uncensored$probability
   )
 

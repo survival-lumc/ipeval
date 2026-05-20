@@ -16,6 +16,7 @@ bootstrap_iteration <- function(data, ip_object) {
   )
   bs_pred <- lapply(ip_object$predictions, function(x) x[bs_sample])
 
+  bs_pseudopop <- list(ids = ip_object$pseudopop$ids[bs_sample])
   # compute iptw on resampled data
   bs_iptw <- get_iptw(
     treatment_formula = ip_object$treatment$propensity_formula,
@@ -43,6 +44,7 @@ bootstrap_iteration <- function(data, ip_object) {
     outcome = bs_outcome,
     treatment = bs_trt,
     predictions = bs_pred,
+    pseudopop = bs_pseudopop,
     ipt = bs_iptw,
     ipc = bs_ipcw,
     metrics = ip_object$metrics
