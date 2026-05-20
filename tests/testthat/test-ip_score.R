@@ -552,6 +552,20 @@ test_that("ip_score metrics equal to unobserved CF metrics, surv, KM censor, sta
     metrics = c("auc", "brier", "oeratio")
   )
 
+  ip_score_unstable <- ip_score(
+    data = data,
+    object = model,
+    outcome = survival::Surv(time, status),
+    treatment_formula = A ~ L,
+    treatment_of_interest = 0,
+    time_horizon = horizon,
+    cens_model = "KM",
+    cens_formula = ~ 1,
+    stable_iptw = FALSE,
+    null_model = FALSE,
+    metrics = c("auc", "brier", "oeratio")
+  )
+
   stable_min <- min(ip_score$ipt$weights, na.rm = TRUE)
   stable_max <- max(ip_score$ipt$weights, na.rm = TRUE)
 
