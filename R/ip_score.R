@@ -51,7 +51,8 @@
 #'   time-to-event data, e.g. Surv(time, status), if time and status are columns
 #'   in data.
 #' @param treatment_formula A formula which identifies the treatment (left hand
-#'   side) and the confounders (right hand side) in the data. E.g. A ~ L. The
+#'   side) and the confounders (right hand side) in the data. E.g. A ~ L.
+#'   The treatment can be either binary (0/1) or a categorical factor. The
 #'   confounders are used to estimate the inverse probability of treatment
 #'   weights (IPTW) model. The IPTW can also be specified themselves using the
 #'   iptw argument, in which case the right hand side of this formula is
@@ -94,8 +95,8 @@
 #'
 #' @returns An object of class `ip_score`, for which the `print()` and `plot()`
 #' methods are implemented. The object is a nested list containing: \itemize{
-#'   \item `$score`, which contains the predictive performance in the 'counterfactual'
-#'   dataset.
+#'   \item `$score`, which contains the predictive performance in the
+#'   'counterfactual'dataset.
 #'   \item `$outcome`, the observed outcome of the original dataset.
 #'   \item `$treatment`, the observed outcome of the original dataset.
 #'   \item `$predictions`, the predictions to be evaluated, i.e. the probability
@@ -103,12 +104,12 @@
 #'   treatment_of_interest.
 #'   \item `$ipt`, method, model and inverse probability of treatment weights
 #'   (IPTW). These are NA for patients that are not in the pseudopopulation.
-#'   \item `$ipc`, method, model and inverse probability of censoring weights (IPCW).
-#'      these are NA for patients that were censored.
-#'   \item `$correct_trt`, binary vector indicating which subjects of the original
-#'      population followed the treatment of interest.
-#'   \item `$uncensored`, binary vector indicating which subjects of the original
-#'      population were uncensored, if applicable.
+#'   \item `$ipc`, method, model and inverse probability of censoring weights
+#'   (IPCW). These are NA for patients that were censored.
+#'   \item `$correct_trt`, binary vector indicating which subjects of the
+#'   original population followed the treatment of interest.
+#'   \item `$uncensored`, binary vector indicating which subjects of the
+#'   original population were uncensored, if applicable.
 #'   \item `$pseudopop`, binary vector indicating which subjects of the original
 #'      population were in the pseudopopulation. Equal to
 #'      `$correct_trt & $uncensored`.
@@ -394,10 +395,20 @@ extract_treatment <- function(data, treatment_formula, treatment_of_interest) {
   trt_list$observed <- extract_lhs(data, treatment_formula)
   trt_list$treatment_of_interest <- treatment_of_interest
   trt_list$propensity_formula <- treatment_formula
-  stopifnot("Treatment is not binary" =
-              setequal(unique(trt_list$observed), c(0,1)))
-  stopifnot("Treatment_of_interest must be either 0 or 1" =
-              treatment_of_interest == 0 || treatment_of_interest == 1)
+
+  n_trt <- length(unique(trt_list$observed))
+
+  if (n_trt == 2) {
+    trt_list$type <- "binary"
+  } else if (n_trt >= 3) {
+    stopifnot("Categorical treatment variable must be a factor." =
+                is.factor(trt_list$observed))
+    trt_list$type <- "categorical"
+  } else {
+    stop("Only 1 treatment option found in data. Must have at least 2 options.")
+  }
+  stopifnot("Specified treatment_of_interest value does not appear in data" =
+              treatment_of_interest %in% trt_list$observed)
   trt_list
 }
 
