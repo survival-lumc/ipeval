@@ -28,11 +28,22 @@ ipt_weights <- function(data, propensity_formula, treatment_of_interest,
 ipt_model_prob_binary <- function(data, propensity_formula, trt_variable) {
   propensity_model <- stats::glm(propensity_formula, family = "binomial", data)
   prop_score <- unname(stats::predict(propensity_model, type = "response"))
+
+  if (is.factor(data[[trt_variable]])) {
+    # if trt variable is a factor, predict(propensity_model) estimates
+    # probability of the second label. if binary, predict(propensity_model)
+    # estimates probability of outcome 1.
+    predicted_level <- levels(data[[trt_variable]])[[2]]
+  } else {
+    predicted_level <- 1
+  }
+  # probability of getting the treatment that the patient was assigned
   prob_trt <- ifelse(
-    data[[trt_variable]] == 1,
+    data[[trt_variable]] == predicted_level,
     prop_score,
     1 - prop_score
   )
+
   list(propensity_model, prob_trt, "binomial glm")
 }
 

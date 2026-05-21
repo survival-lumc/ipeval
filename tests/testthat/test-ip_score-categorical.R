@@ -16,6 +16,8 @@ test_that("ip_score binary treatment but factors", {
   modelfactor <- glm(Y ~ A_factor + P, data, family = "binomial")
   modelbinary <- glm(Y ~ A + P, data, family = "binomial")
 
+  ips <- ip_score(modelfactor, data, outcome = Y, A_factor ~ L, "trt0")
+
   expect_equal(
     ip_score(modelfactor, data, outcome = Y, A_factor ~ L, "trt0")$score,
     ip_score(modelbinary, data, Y, A ~ L, 0)$score
@@ -78,25 +80,16 @@ test_that("ip_score categorical treatments binary outcome works", {
     ifelse(trt == "A", 1/estp1, ifelse(trt == "B", 1/estp2, 1/estp3))
   )
 
-  mean(data$weight[data$trt == "A"])
-  mean(ips$ipt$weights[!is.na(ips$ipt$weights)])
 
-  ips$ipt$weights[!is.na(ips$ipt$weights)][[1]]
-
-
-  trt_model <- ipt_weights(data, trt ~ L, type = "categorical")
-  trt_model$model
 
   naivemodel <- glm(Y ~ trt + P, family = "binomial", data = data)
   causalmodel <- glm(Y ~ trt + P, family = "binomial", data,
-                     weights = trt_model$weights)
+                     weights = weight)
   fullmodel <- glm(Y ~ trt + P + L, family = "binomial", data = data)
+
   predA <- predict_CF(naivemodel, data, "trt", "A")
   predB <- predict_CF(naivemodel, data, "trt", "B")
   predC <- predict_CF(naivemodel, data, "trt", "C")
-
-  naivemodel
-
 
   correctA <- data$YA
   correctB <- data$YB
@@ -107,30 +100,23 @@ test_that("ip_score categorical treatments binary outcome works", {
   random <- runif(n)
 
   models <- list(predA, predB, predC,
-                 correctA, correctB, correctC, correctnaive, always0, always1,
+                 correctA, correctB, correctC, always0, always1,
                  random)
 
-  ips <- ip_score(models, data, Y, trt ~ L, "A", null_model = FALSE)
-  ips
-  observed_score(models, data, YB)
+  ipsA <- ip_score(models, data, Y, trt ~ L, "A", null_model = F)
+  obsA <- observed_score(models, data, YA)
+  ipsB <- ip_score(models, data, Y, trt ~ L, "B", null_model = F)
+  obsB <- observed_score(models, data, YB)
+  ipsC <- ip_score(models, data, Y, trt ~ L, "C", null_model = F)
+  obsC <- observed_score(models, data, YC)
 
-
-
-  observed_score(list(naivemodel, causalmodel, fullmodel), data[data$trt != "A",], YB)
-
-  # ip_score(models, data, )
-
-  ips$ipt$weights
-  ips$ipt$model
-
+  expect_equal(ipsA$score, obsA$score, tolerance = 0.03)
+  expect_equal(ipsB$score, obsB$score, tolerance = 0.03)
+  expect_equal(ipsC$score, obsC$score, tolerance = 0.03)
 
 
 
 
-  # observed_score()
 
-  ip_score(list(naivemodel, causalmodel, fullmodel), data[data$trt != "A",],
-           outcome = Y, treatment_formula = trt ~ L, "B", null_model = F)
-  observed_score(list(naivemodel, causalmodel, fullmodel), data[data$trt != "A",], YB)
 
 })
