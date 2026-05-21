@@ -12,18 +12,20 @@ bootstrap_iteration <- function(data, ip_object) {
   )
   bs_trt <- list(
     "observed" = ip_object$treatment$observed[bs_sample],
-    "treatment_of_interest" = ip_object$treatment$treatment_of_interest
+    "propensity_formula" = ip_object$treatment$propensity_formula,
+    "treatment_of_interest" = ip_object$treatment$treatment_of_interest,
+    "type" = ip_object$treatment$type
   )
   bs_pred <- lapply(ip_object$predictions, function(x) x[bs_sample])
 
   bs_pseudopop <- list(ids = ip_object$pseudopop$ids[bs_sample])
   # compute iptw on resampled data
+
   bs_iptw <- get_iptw(
-    treatment_formula = ip_object$treatment$propensity_formula,
-    data = data[bs_sample, ],
-    stable_iptw = ip_object$ipt$method == "stabilized weights",
-    only_weights = TRUE,
-    treatment_of_interest = ip_object$treatment$treatment_of_interest
+    data = data[bs_sample,],
+    score_treatment = bs_trt,
+    stable_iptw = grepl("stabilized", ip_object$ipt$method),
+    only_weights = TRUE
   )
 
   # if survival, compute ipcw and survival status at time horizon of sample

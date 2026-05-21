@@ -193,8 +193,12 @@ ip_score <- function(object, data, outcome, treatment_formula,
 
   score_pseudopop <- get_pseudopop(score_outcome, score_treatment)
 
-  score_ipt <- get_iptw(treatment_formula, data, stable_iptw, iptw,
-                        treatment_of_interest = treatment_of_interest)
+  score_ipt <- get_iptw(
+    data = data,
+    score_treatment = score_treatment,
+    iptw = iptw,
+    stable_iptw = stable_iptw
+  )
 
   if (score_outcome$type == "survival") {
     cens_formula <- combine_censoring_formula(cens_formula, substitute(outcome))
@@ -226,6 +230,46 @@ ip_score <- function(object, data, outcome, treatment_formula,
 
   ip_object <- add_to_ip_object(ip_object, "quiet", quiet)
   return(ip_object)
+}
+
+get_iptw <- function(data, score_treatment, iptw, stable_iptw, only_weights = FALSE) {
+  ipt <- list()
+  if (!missing(iptw)) {
+    ipt$method <- "weights manually specified"
+  } else {
+    trt_form <- score_treatment$propensity_formula
+    ipt$confounders <- all.vars(trt_form)[-1]
+    ipt$propensity_formula <- trt_form
+    iptw_object <- ipt_weights(
+      data = data,
+      propensity_formula = trt_form,
+      treatment_of_interest = score_treatment$treatment_of_interest,
+      type = score_treatment$type
+    )
+    ipt$model <- iptw_object$model
+    ipt$method <- iptw_object$method
+    iptw <- iptw_object$weights
+
+    if (stable_iptw) {
+      ipt$method <- paste0("stabilized ", ipt$method)
+      stable_treatment_formula <-
+        stats::update.formula(trt_form, . ~ 1)
+      siptw_object <- ipt_weights(
+        data = data,
+        propensity_formula = stable_treatment_formula,
+        treatment_of_interest = score_treatment$treatment_of_interest,
+        type = score_treatment$type
+      )
+      iptw <- 1/siptw_object$weights * iptw
+      ipt$stable_model <- siptw_object$model
+    }
+  }
+  ipt$weights <- iptw
+  if (only_weights == TRUE) {
+    return(list("weights" = ipt$weights))
+  } else {
+    return(ipt)
+  }
 }
 
 combine_censoring_formula <- function(cens_formula, outcome) {
@@ -401,8 +445,10 @@ extract_treatment <- function(data, treatment_formula, treatment_of_interest) {
   if (n_trt == 2) {
     trt_list$type <- "binary"
   } else if (n_trt >= 3) {
-    stopifnot("Categorical treatment variable must be a factor." =
-                is.factor(trt_list$observed))
+    stopifnot(
+      "More than 2 treatment options found in data, but not a factor variable." =
+        is.factor(trt_list$observed)
+    )
     trt_list$type <- "categorical"
   } else {
     stop("Only 1 treatment option found in data. Must have at least 2 options.")
@@ -437,38 +483,6 @@ get_predictions <- function(object, data, treatment_column,
     }
   )
   predictions
-}
-
-get_iptw <- function(treatment_formula, data, stable_iptw, iptw,
-                     only_weights = FALSE, treatment_of_interest) {
-  ipt <- list()
-  ipt$method = "weights manually specified"
-
-  if (missing(iptw)) {
-    ipt$method <- "binomial glm"
-    ipt$confounders <- all.vars(treatment_formula)[-1]
-    ipt$propensity_formula <- treatment_formula
-    iptw_object <- ipt_weights(data, treatment_formula, treatment_of_interest)
-    ipt$model <- iptw_object$model
-    iptw <- iptw_object$weights
-
-    if (stable_iptw == TRUE) {
-      ipt$method <- "stabilized weights"
-      stable_treatment_formula <-
-        stats::update.formula(treatment_formula, . ~ 1)
-      sipt_object <- ipt_weights(data, stable_treatment_formula,
-                                 treatment_of_interest)
-      iptw <- 1/sipt_object$weights * iptw
-      ipt$stable_model <- sipt_object$model
-    }
-  }
-  ipt$weights <- iptw
-
-  if (only_weights == TRUE) {
-    return(list("weights" = ipt$weights))
-  } else {
-    return(ipt)
-  }
 }
 
 get_ipcw <- function(cens_formula, data, cens_model, time_horizon,

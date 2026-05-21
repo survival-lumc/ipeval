@@ -69,12 +69,12 @@ test_that("wrong input throws sensible errors", {
 
   expect_error(
     ip_score(predictions, my_data, status, time ~ L, 1),
-    "Treatment is not binary"
+    "not a factor variable."
   )
 
   expect_error(
     ip_score(predictions, my_data, status, A ~ L, 2),
-    "Treatment_of_interest"
+    "treatment_of_interest value does not appear in data"
   )
 
   # other
