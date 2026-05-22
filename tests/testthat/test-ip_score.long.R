@@ -240,6 +240,18 @@ test_that("ipscore long results vs CF dataset with KM censoring", {
   expect_equal(score0cox_informative2$score, score0_true$score, tolerance = 0.02)
 })
 
+test_that("faithful_to_trt works", {
+  ds <- data.frame(id = 1:4,time = c(5,6,7,8), A0 = c(0,0,1,1),
+                     A1 = c(0,1,1,1), A2 = c(0,1,0,1), A3 = c(1,0,0,1))
+  visit_times <- c(2,3,5,6)
+  dl <- wide_to_long(ds, baseline_variables = "id",
+                            list(A = paste0("A", 0:3)), visit_times = visit_times,
+               outcome_times = ds$time)
+
+  expect_equal(faithful_to_trt(dl, A ~ 1, c(0,0,0,0), visit_times), c(T,F,F,F))
+  expect_equal(faithful_to_trt(dl, A ~ 1, c(0,0,0,1), visit_times), c(T,F,F,F))
+  expect_equal(faithful_to_trt(dl, A ~ 1, c(0,1,1,0), visit_times), c(F,T,F,F))
+})
 
 
 test_that("ipscore long results vs validation under interventions paper", {

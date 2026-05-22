@@ -9,8 +9,10 @@
 
 
 #' @export
-wide_to_long <- function(df, baseline_variables, wide_variables, visit_times,
+wide_to_long <- function(df, baseline_variables = c("id"), wide_variables, visit_times,
                          outcome_times) {
+  stopifnot("must have column 'id' for subject ids in df" = "id" %in% names(df))
+  stopifnot("id must be unique in df" = nrow(df) == length(unique(df$id)))
   long <- reshape(
     data = df,
     varying = wide_variables,
@@ -78,8 +80,9 @@ ip_score_long <- function(probabilities, data_outcome, data_long,
   # - probabilities and data outcome same length
   # - data outcome has id, time, status
   # - same ids in data outcome and data long
-  # - visit times should be correct
-
+  # - visit times as given should be consistent with visit_times in data_long
+  # - visits may not be skipped (unless censored). I.e. all visits before
+  #   survtime should be in data.
 
   # we should make sure that ids in data_outcome and data_long have same ordering
   # here
@@ -104,13 +107,13 @@ ip_score_long <- function(probabilities, data_outcome, data_long,
   data_flat <- data.frame(
     id = unique(data_long$id),
     ipt = ipt_product,
-    trt = faithful_to_trt(data_long, treatment_of_interest)
+    trt = faithful_to_trt(data_long, treatment_formula, treatment_of_interest,
+                          visit_times)
   )
   names(data_flat)[3] <- as.character(treatment_formula[[2]])
 
   ipt <- get_iptw(iptw = data_flat$ipt)
-  ipt$model <- ipt_visit$model
-
+  # ipt$model <- ipt_visit$model
 
   outcome <- extract_outcome(data_outcome, substitute(survival::Surv(time, status)),
                              time_horizon = time_horizon)
@@ -138,20 +141,21 @@ ip_score_long <- function(probabilities, data_outcome, data_long,
   ip_object <- compute_metrics(ip_object)
 
   ip_object <- add_to_ip_object(ip_object, "quiet", quiet)
-  # ip_object <- add_to_ip_object(ip_object, "treatment_formula", ipt_visit$model)
 
   return(ip_object)
 }
 
-faithful_to_trt <- function(data_long, treatment_of_interest) {
-  # TODO: replace A by trt var, lhs from treatment formula
-  # TODO: "visit_time" not hardcoded?
-  # TODO: data_long[["visit"]] + 1 doesnt work when visit times are not 0,1,2,..
-  tapply(
-    data_long$A == treatment_of_interest[data_long[["visit_time"]] + 1],
+faithful_to_trt <- function(data_long, treatment_formula,
+                            treatment_of_interest, visit_times) {
+
+  trt_var <- as.character(treatment_formula[[2]])
+  visit_id <- match(data_long$visit_time, visit_times)
+
+  as.vector(tapply(
+    data_long[[trt_var]] == treatment_of_interest[visit_id],
     data_long$id,
     FUN = all
-  )
+  ))
 }
 
 construct_long_ip_object <- function(outcome, treatment, predictions, ipt, ipc,
@@ -226,7 +230,7 @@ get_ipcw_long <- function(cens_formula, data_outcome, data_long,
     ipc <- list()
     ipc$method <- "cox"
     ipc$cens_formula <- full_cens_formula
-    ipc$model <- cens_model
+    # ipc$model <- cens_model
     ipc$weights <- weight
 
   } else {
