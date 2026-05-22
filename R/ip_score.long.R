@@ -11,13 +11,6 @@
 #' @export
 wide_to_long <- function(df, baseline_variables, wide_variables, visit_times,
                          outcome_times) {
-  # we sometimes want a specific time dependent variable to be available in all
-  # rows too. I.e. L0 may be important at all time points.
-  # we have to remove it first, then add it back later
-  # both_i <- baseline_variables %in% unlist(wide_variables)
-  # both_vars <- baseline_variables[both_i]
-  # baseline_variables <- baseline_variables[!both_i]
-
   long <- reshape(
     data = df,
     varying = wide_variables,
@@ -79,7 +72,7 @@ ip_score_long <- function(probabilities, data_outcome, data_long,
                           treatment_formula, treatment_of_interest,
                           metrics = c("auc", "brier", "oeratio", "calplot"),
                           visit_times, time_horizon, cens_model = "KM",
-                          cens_formula = ~ 1, null_model = TRUE) {
+                          cens_formula = ~ 1, null_model = TRUE, quiet = FALSE) {
 
   # assert:
   # - probabilities and data outcome same length
@@ -90,9 +83,13 @@ ip_score_long <- function(probabilities, data_outcome, data_long,
 
   # we should make sure that ids in data_outcome and data_long have same ordering
   # here
-  stopifnot(visit_times[0] == 0)
-  stopifnot(max(visit_times) < time_horizon)
   n_visits <- length(visit_times)
+  stopifnot("visit times must be ordered chronologically" =
+              all(order(visit_times) == 1:n_visits))
+  stopifnot("first visit time must be at t=0" = visit_times[0] == 0)
+  stopifnot("last visit time must be before time horizon" =
+              max(visit_times) < time_horizon)
+
 
   if (is.character(treatment_of_interest) && treatment_of_interest == "always")
     treatment_of_interest <- rep(1, n_visits)
@@ -120,63 +117,9 @@ ip_score_long <- function(probabilities, data_outcome, data_long,
 
   treatment <- extract_treatment(data_flat, treatment_formula, TRUE)
 
-  # move to get_ipcw_long fct
-  if (cens_model == "KM") {
-    # for KM, we can use data_outcome
-    ipc <- get_ipcw(Surv(time, status) ~ 1, data_outcome,
-                    cens_model = "KM", time_horizon = time_horizon)
-  } else if (cens_model == "cox") {
-    # we survsplit here, so maybe we need data_long to have surv intervals
-    # anyway
 
-    survintervals <- survival::survSplit(
-      formula = Surv(time, status) ~ .,
-      data = data_outcome,
-      cut = 0:4)
-
-    data_combined <- cbind(survintervals, data_long)
-
-    # this variable hopefully does not exist yet...
-    data_combined$censored <- with(
-      data_combined,
-      status == 0 & !duplicated(id, fromLast = TRUE)) # censor indicator = 1
-    # in last row of censored patients
-    full_cens_formula <- stats::update.formula(
-      old = cens_formula,
-      Surv(tstart, time, censored) ~ .
-    )
-
-    cens_model <- survival::coxph(full_cens_formula, data_combined, model = TRUE)
-
-    bh <- survival::basehaz(cens_model, centered = FALSE)
-    cumhaz.fun <- stats::stepfun(bh$time, c(0, bh$hazard))
-
-    cumhaz_start <- cumhaz.fun(data_combined$tstart)
-    cumhaz_end <- cumhaz.fun(pmin(data_combined$time, time_horizon))
-    lp <- stats::predict(cens_model, newdata = data_combined, type = "lp")
-    contribution <- -(cumhaz_end - cumhaz_start) * exp(lp)
-
-    cumhaz <- tapply(contribution, data_combined$id, FUN = sum)
-    prob_uncensor <- exp(cumhaz)
-
-    weight <- ifelse(
-      data_outcome[, "status"] == FALSE & data_outcome[, "time"] < time_horizon,
-      0,
-      1 / prob_uncensor)
-
-
-    ipc <- list()
-    ipc$method <- "cox"
-    ipc$cens_formula <- full_cens_formula
-    ipc$model <- cens_model
-    ipc$weights <- weight
-
-  } else {
-    print("censoring model not implemented")
-  }
-
-
-  # ipt$weights <- threshold_weights(ipt$weights, 0.99)
+  ipc <- get_ipcw_long(cens_formula, data_outcome, data_long,
+                       cens_model, time_horizon)
 
   predictions <- get_predictions(probabilities, data_flat)
 
@@ -194,11 +137,8 @@ ip_score_long <- function(probabilities, data_outcome, data_long,
   )
   ip_object <- compute_metrics(ip_object)
 
-  ip_object <- add_to_ip_object(ip_object, "quiet", FALSE)
-  ip_object <- add_to_ip_object(ip_object, "treatment_formula", ipt_visit$model)
-
-  # TODO: print in assumptions # patients that satisfy treatment strategy
-  # also in point trt!
+  ip_object <- add_to_ip_object(ip_object, "quiet", quiet)
+  # ip_object <- add_to_ip_object(ip_object, "treatment_formula", ipt_visit$model)
 
   return(ip_object)
 }
@@ -232,4 +172,65 @@ threshold_weights <- function(weights, quantile_bound) {
   upper_bound <- quantile(weights, quantile_bound)[[1]]
   weights[weights > upper_bound] <- upper_bound
   return(weights)
+}
+
+get_ipcw_long <- function(cens_formula, data_outcome, data_long,
+                          cens_model, time_horizon) {
+  if (cens_model == "KM") {
+    # for KM, we can use data_outcome
+    ipc <- get_ipcw(Surv(time, status) ~ 1, data_outcome,
+                    cens_model = "KM", time_horizon = time_horizon)
+  } else if (cens_model == "cox") {
+    survintervals <- survival::survSplit(
+      formula = Surv(time, status) ~ .,
+      data = data_outcome,
+      cut = 0:4)
+    stopifnot(nrow(survintervals) == nrow(data_long))
+    data_combined <- cbind(survintervals, data_long)
+
+    if ("ipscore_longcensored" %in% names(data_combined)) {
+      stop("Please do not use ipscore_longcensored as one of the columns. This
+           name is reserved for internal use.")
+    }
+    # set censor indicator = 1 in last row of censored patients
+    data_combined$ipscore_longcensored <- with(
+      data_combined,
+      status == 0 & !duplicated(id, fromLast = TRUE))
+
+    full_cens_formula <- stats::update.formula(
+      old = cens_formula,
+      Surv(tstart, time, ipscore_longcensored) ~ .
+    )
+
+    cens_model <- survival::coxph(full_cens_formula, data_combined, model = TRUE)
+
+    bh <- survival::basehaz(cens_model, centered = FALSE)
+    cumhaz.fun <- stats::stepfun(bh$time, c(0, bh$hazard))
+
+    # compute the cumulative hazard contribution between each visit
+    cumhaz_start <- cumhaz.fun(data_combined$tstart)
+    cumhaz_end <- cumhaz.fun(pmin(data_combined$time, time_horizon))
+    lp <- stats::predict(cens_model, newdata = data_combined, type = "lp")
+    contribution <- -(cumhaz_end - cumhaz_start) * exp(lp)
+
+    # take the sum and compute probability of uncensored
+    cumhaz <- tapply(contribution, data_combined$id, FUN = sum)
+    prob_uncensor <- exp(cumhaz)
+
+    weight <- ifelse(
+      data_outcome[, "status"] == FALSE & data_outcome[, "time"] < time_horizon,
+      0,
+      1 / prob_uncensor)
+
+
+    ipc <- list()
+    ipc$method <- "cox"
+    ipc$cens_formula <- full_cens_formula
+    ipc$model <- cens_model
+    ipc$weights <- weight
+
+  } else {
+    print("censoring model not implemented")
+  }
+  return(ipc)
 }

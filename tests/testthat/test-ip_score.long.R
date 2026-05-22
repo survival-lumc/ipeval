@@ -191,8 +191,6 @@ test_that("ipscore long results vs CF dataset with KM censoring", {
     df_val_informativecensor, c("id", "U"), list(A = paste0("A", 0:4), L = paste0("L", 0:4)),
     0:4, df_val_informativecensor$time)
 
-  sum(faithful_to_trt(df_val_inf_long, rep(0, 5)))
-
   df_val_inf_long <- add_lag_terms(df_val_inf_long, "A")
 
   score0cox_informative <- ip_score_long(probabilities = models,
@@ -206,10 +204,7 @@ test_that("ipscore long results vs CF dataset with KM censoring", {
                              cens_model = "cox",
                              cens_formula = ~ U)
 
-  score0cox_informative$ipt$model
-  print_censor_model(score0cox_informative$ipc$model)
-
-  # a bit high, seems to decrease when increasing n
+  # a bit high tolerance required, seems to decrease when increasing n
   expect_equal(score0cox_informative$score, score0_true$score, tolerance = 0.04)
 
   # informative censoring, with time varying variables
