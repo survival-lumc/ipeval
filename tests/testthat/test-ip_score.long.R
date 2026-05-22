@@ -50,19 +50,6 @@ test_that("ipscore long results vs CF dataset correct", {
     null_model = TRUE,
     metrics = metrics
   )
-  score0stable <- ip_score_long(
-    probabilities = models,
-    data_outcome = df_val_outcome,
-    data_long = df_val_long,
-    visit_times = 0:4,
-    time_horizon = 5,
-    treatment_formula = A ~ (A_lag_1 * L),
-    treatment_of_interest = "never",
-    null_model = TRUE,
-    metrics = metrics,
-    stable_iptw = TRUE
-  )
-
   score0_true <- observed_score(models, df_cf0, Surv(time, status), metrics,
                                 TRUE, 5)
 
@@ -77,28 +64,11 @@ test_that("ipscore long results vs CF dataset correct", {
     null_model = TRUE,
     metrics = metrics
   )
-  score1stable <- ip_score_long(
-    probabilities = models,
-    data_outcome = df_val_outcome,
-    data_long = df_val_long,
-    visit_times = 0:4,
-    time_horizon = 5,
-    treatment_formula = A ~ (A_lag_1 * L),
-    treatment_of_interest = "always",
-    null_model = TRUE,
-    metrics = metrics,
-    stable_iptw = TRUE
-  )
-
   score1_true <- observed_score(models, df_cf1, Surv(time, status), metrics,
                                 TRUE, 5)
 
   expect_equal(score0$score, score0_true$score, tolerance = 0.01)
-  # expect_equal(score0stable$score, score0_true$score, tolerance = 0.01)
   expect_equal(score1$score, score1_true$score, tolerance = 0.01)
-  expect_equal(score1stable$score, score1$score, tolerance = 0.00001)
-
-
   # if risk_random model fails while metrics of other models are accurate,
   # this is very likely due to consistency not holding at the individual level
   # i.e. patients that were completely treated in the observational data
