@@ -117,14 +117,14 @@ plot.ip_score <- function(x, ...) {
 
 assumptions <- function(x) {
 
-  if (!is.null(ips$ipt$confounders)) {
-    confounders <- paste0("{", paste0(ips$ipt$confounders, collapse = ", "), "}")
+  if (!is.null(x$ipt$confounders)) {
+    confounders <- paste0("{", paste0(x$ipt$confounders, collapse = ", "), "}")
   } else {
     confounders <- "{unknown}"
   }
 
-    if (!is.null(ips$ipc$cens_formula)) {
-    cv <- all.vars(ips$ipc$cens_formula)[-c(1,2)]
+    if (!is.null(x$ipc$cens_formula)) {
+    cv <- all.vars(x$ipc$cens_formula)[-c(1,2)]
     cens_vars <- paste0("{", paste0(cv, collapse = ", "), "}")
   } else {
     cens_vars <- "{unknown}"

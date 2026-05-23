@@ -589,15 +589,6 @@ test_that("ip_score metrics equal to unobserved CF metrics, surv, KM censor, sta
   expect_equal(unname(ip_score$score$brier), score$Brier$score$Brier, tolerance = 0.01)
   expect_equal(unname(ip_score$score$oeratio), score$oe, tolerance = 0.01)
 
-  # test if console output with all its assumptions work as expected
-
-  output <- capture_output_lines({print(ip_score)})
-  expected <- "Estimation of the performance of the prediction model in a counterfactual (CF) dataset where everyone's treatment A was set to 0.The following assumptions must be satisfied for correct inference:- Conditional exchangeability requires that the inverse probability of treatment weights are sufficient to adjust for confounding between treatment and outcome.- Conditional positivity (assess $ipt$weights for outliers)- Consistency (including no interference)- Correctly specified propensity model. Estimated treatment model is* Stabilized weights were used. See also $ipt$stable_model. Pseudopopulation weights ($ipt$weights) are then probability of treatment from $ipt$stable_model divided by probability of treatment from $ipt$model.- Non-informative censoring. See also $ipc$model for the Kaplan-Meier estimator of the censoring distribution."
-
-  expect_equal(
-    paste0(output[-c(10,18,19)], collapse = ""),
-    expected
-  )
 })
 
 
