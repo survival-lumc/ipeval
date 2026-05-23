@@ -116,17 +116,25 @@ plot.ip_score <- function(x, ...) {
 
 
 assumptions <- function(x) {
+
   if (!is.null(ips$ipt$confounders)) {
     confounders <- paste0("{", paste0(ips$ipt$confounders, collapse = ", "), "}")
   } else {
     confounders <- "{unknown}"
   }
 
+    if (!is.null(ips$ipc$cens_formula)) {
+    cv <- all.vars(ips$ipc$cens_formula)[-c(1,2)]
+    cens_vars <- paste0("{", paste0(cv, collapse = ", "), "}")
+  } else {
+    cens_vars <- "{unknown}"
+  }
+
   trt_col <- x$treatment$treatment_column
   trt_val <- x$treatment$treatment_of_interest
   pp <- x$pseudopop$ids
   horizon <- x$outcome$time_horizon
-  cens_vars <- "TODO"
+
 
   pp("Estimation of the performance of the prediction model in a pseudopopulation
      where everyone's treatment ", trt_col, " was set to ", trt_val, ".")
@@ -142,10 +150,10 @@ assumptions <- function(x) {
     pp("The pseudopopulation ($pseudopop) is constructed from ", sum(pp),
        " (", round(mean(pp)*100,1),
        "%) subjects who indeed received treatment level ", trt_val,
-       " and remained uncensored till time ", horizon,
+       " and remained uncensored till time=", horizon,
        ". These subjects are reweighted to represent the full target population
        under a hypothetical intervention in which everyone received this
-       treatment level and remained uncensored till time ", horizon, ".")
+       treatment level and remained uncensored till time=", horizon, ".")
   }
 
   pp("The following assumptions must be satisfied for correct inference:")
@@ -173,7 +181,7 @@ assumptions <- function(x) {
       pp("- Independent censoring. The censoring mechanism is completely
          independent of the outcome process.")
       pp("- Positivity for censoring: requires that the probability of remaining
-         uncensored till time ", horizon, " is greater than zero. The
+         uncensored till time=", horizon, " is greater than zero. The
          distribution of IPC-weights can be assessed with
          $ipc$weights[$pseudopop$ids].")
     } else if (x$ipc$method == "cox") {
@@ -181,7 +189,7 @@ assumptions <- function(x) {
          cens_vars, ", censoring is independent of the outcome process.")
       pp("- Conditional positivity for censoring: requires that for all observed
          combinations of the covariate variables ", cens_vars, " the probability
-         of remaining uncensored till time ", horizon, " is greater than zero.
+         of remaining uncensored till time=", horizon, " is greater than zero.
          The distribution of IPC-weights can be assessed with
          $ipc$weights[$pseudopop$ids].")
     } else {
@@ -229,7 +237,7 @@ assumptions <- function(x) {
     cox = {
       pp("- Correctly specified censoring model. The estimated censoring
       model is ")
-      pp("  ", print_censor_model(x$ipc$model), ". See also $ipc$model.")
+      pp(" ", print_censor_model(x$ipc$model), ". See also $ipc$model.")
     },
 
     pp("- The supplied inverse probability of censoring weights (IPCW) are
