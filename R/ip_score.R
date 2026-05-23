@@ -157,7 +157,7 @@ ip_score <- function(object, data, outcome, treatment_formula,
                      bootstrap = 0, bootstrap_progress = TRUE,
                      iptw, ipcw, quiet = FALSE) {
 
-
+  # browser()
   # checking inputs ---------------------------------------------------------
 
   check_missing(object)
@@ -394,8 +394,15 @@ extract_treatment <- function(data, treatment_formula, treatment_of_interest) {
   trt_list$observed <- extract_lhs(data, treatment_formula)
   trt_list$treatment_of_interest <- treatment_of_interest
   trt_list$propensity_formula <- treatment_formula
-  stopifnot("Treatment is not binary" =
-              setequal(unique(trt_list$observed), c(0,1)))
+
+  # treatment must be binary. If its not, we may be calling ip_score from
+  # observed_score, which works by setting a fake treatment column to 1 value
+  # for everyone. Otherwise stop.
+  if (!setequal(unique(trt_list$observed), c(0,1))) {
+    if (trt_list$treatment_column != "ipscore_fake_trt") {
+      stop("Treatment is not binary")
+    }
+  }
   stopifnot("Treatment_of_interest must be either 0 or 1" =
               treatment_of_interest == 0 || treatment_of_interest == 1)
   trt_list
