@@ -68,13 +68,17 @@ add_lag_terms <- function(df, var, lag = 1, fill = 0) {
 # - outcome_data (id, time, status)
 # - treatment/confounder data, long. Treatment formula needs to make sense here
 #   - add_lag function
-
+#' @param strip_ipt_models If set to TRUE (default), the models for the IPT
+#' and IPC-weights are stripped of unnecessary data. Set to FALSE if you plan
+#' to do extensive diagnostics on the fitted IPT/IPC models. The resulting
+#' `ip_score` object will use quite a lot more memory.
 #' @export
 ip_score_long <- function(probabilities, data_outcome, data_long,
                           treatment_formula, treatment_of_interest,
                           metrics = c("auc", "brier", "oeratio", "calplot"),
                           visit_times, time_horizon, cens_model = "KM",
-                          cens_formula = ~ 1, null_model = TRUE, quiet = FALSE) {
+                          cens_formula = ~ 1, null_model = TRUE, quiet = FALSE,
+                          strip_ipt_models = TRUE) {
 
   # assert:
   # - probabilities and data outcome same length
@@ -102,42 +106,42 @@ ip_score_long <- function(probabilities, data_outcome, data_long,
   if (is.character(treatment_of_interest) && treatment_of_interest == "never")
     treatment_of_interest <- rep(0, n_visits)
 
+  score_outcome <- extract_outcome(data_outcome,
+                                   substitute(survival::Surv(time, status)),
+                                   time_horizon = time_horizon)
 
-  ipt_long <- get_iptw_long(data_long, treatment_formula)
-  return(ipt_long)
+  score_ipt <- get_iptw_long(data_long, treatment_formula, strip_ipt_models)
 
   data_flat <- data.frame(
     id = unique(data_long$id),
-    ipt = ipt_product,
+    ipt = score_ipt$weights,
     trt = faithful_to_trt(data_long, treatment_formula, treatment_of_interest,
                           visit_times)
   )
   names(data_flat)[3] <- as.character(treatment_formula[[2]])
 
-  ipt <- get_iptw(iptw = data_flat$ipt)
-  # ipt$model <- ipt_visit$model
+  score_treatment <- extract_treatment(data_flat, treatment_formula, TRUE)
 
-  outcome <- extract_outcome(data_outcome, substitute(survival::Surv(time, status)),
-                             time_horizon = time_horizon)
-
-  treatment <- extract_treatment(data_flat, treatment_formula, TRUE)
+  score_pseudopop <- get_pseudopop(score_outcome, score_treatment)
 
 
-  ipc <- get_ipcw_long(cens_formula, data_outcome, data_long,
+  score_ipc <- get_ipcw_long(cens_formula, data_outcome, data_long,
                        cens_model, time_horizon)
 
-  predictions <- get_predictions(probabilities, data_flat)
+  score_predictions <- get_predictions(probabilities, data_flat)
 
   if (null_model) {
-    predictions <- fit_null(treatment, outcome, predictions, ipt, ipc)
+    score_predictions <- fit_null(score_pseudopop, score_outcome,
+                                  score_predictions, score_ipt, score_ipc)
   }
 
   ip_object <- construct_long_ip_object(
-    outcome = outcome,
-    treatment = treatment,
-    predictions = predictions,
-    ipt = ipt,
-    ipc = ipc,
+    outcome = score_outcome,
+    treatment = score_treatment,
+    predictions = score_predictions,
+    pseudopop = score_pseudopop,
+    ipt = score_ipt,
+    ipc = score_ipc,
     metrics = metrics
   )
   ip_object <- compute_metrics(ip_object)
@@ -160,12 +164,13 @@ faithful_to_trt <- function(data_long, treatment_formula,
   ))
 }
 
-construct_long_ip_object <- function(outcome, treatment, predictions, ipt, ipc,
-                                     metrics) {
+construct_long_ip_object <- function(outcome, treatment, predictions, pseudopop,
+                                     ipt, ipc, metrics) {
   ip_object <- construct_ip_object(
     outcome = outcome,
     treatment = treatment,
     predictions = predictions,
+    pseudopop = pseudopop,
     ipt = ipt,
     ipc = ipc,
     metrics = metrics
@@ -180,12 +185,18 @@ threshold_weights <- function(weights, quantile_bound) {
   return(weights)
 }
 
-get_iptw_long <- function(data_long, treatment_formula) {
-  # ipt_visit <- ipt_weights(data_long, treatment_formula)
-  # ipt_product <- tapply(ipt_visit$weights, data_long$id,
-  #                       FUN = prod)
+get_iptw_long <- function(data_long, treatment_formula, strip_model = TRUE) {
 
-  ipt_visit <- get_iptw(treatment_formula, data_long, stable_iptw = FALSE)
+  ipt_visit <- get_iptw(treatment_formula, data_long, stable_iptw = FALSE,
+                        strip_model = strip_model)
+
+  # the above line computes the visit IPT weights. We require the patient
+  # ITP weights to be stored in the $weights part.
+  ipt_visit$visit_weights <- ipt_visit$weights
+  ipt_visit$weights <- tapply(
+    ipt_visit$visit_weights, data_long$id, FUN = prod
+  )
+
   return(ipt_visit)
 }
 

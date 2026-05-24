@@ -444,7 +444,7 @@ get_predictions <- function(object, data, treatment_column,
 
 get_iptw <- function(treatment_formula, data, stable_iptw, iptw,
                      only_weights = FALSE, treatment_of_interest,
-                     strip_model) {
+                     strip_model = TRUE) {
   ipt <- list()
   ipt$method = "weights manually specified"
 

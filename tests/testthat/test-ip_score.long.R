@@ -50,8 +50,13 @@ test_that("ipscore long results vs CF dataset correct", {
     null_model = TRUE,
     metrics = metrics
   )
-  score0_true <- observed_score(models, df_cf0, Surv(time, status), metrics,
-                                TRUE, 5)
+  score0_true <- observed_score(
+    object = models,
+    data = df_cf0,
+    outcome = Surv(time, status),
+    metrics = metrics,
+    time_horizon = 5
+  )
 
   score1 <- ip_score_long(
     probabilities = models,
@@ -64,8 +69,13 @@ test_that("ipscore long results vs CF dataset correct", {
     null_model = TRUE,
     metrics = metrics
   )
-  score1_true <- observed_score(models, df_cf1, Surv(time, status), metrics,
-                                TRUE, 5)
+  score1_true <- observed_score(
+    object = models,
+    data = df_cf1,
+    outcome = Surv(time, status),
+    metrics = metrics,
+    time_horizon = 5
+  )
 
   expect_equal(score0$score, score0_true$score, tolerance = 0.01)
   expect_equal(score1$score, score1_true$score, tolerance = 0.01)
