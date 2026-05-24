@@ -3,10 +3,8 @@
 #' This function computes the performance of the predictions in the given data,
 #' which may contain a mix of treated and untreated subjects. It exists only to
 #' demonstrate the difference between 'normal' performance and counterfactual
-#' performance. It is not user friendly and should not be relied on. It does
-#' support time-to-event data, but no censoring! I.e. you could evaluate
-#' whether outcomes happen before a time horizon. It does not use IPC weighting
-#' to adjust for censoring.
+#' performance. It is not user friendly and should not be relied on. Consider
+#' using riskRegression::Score() as an alternative.
 #'
 #' @param object One of the following three options to be validated:
 #' \itemize{
@@ -16,14 +14,28 @@
 #'   validating and comparing multiple models at once.
 #' }
 #' @param data A data.frame containing the observed outcome.
-#' @param outcome The outcome, to be evaluated within data. This should be
-#'   the name of a numeric column in data.
+#' @param outcome The outcome, to be evaluated within data. This could either be
+#'   the name of a numeric/logical column in data, or a Surv object for
+#'   time-to-event data, e.g. Surv(time, status), if time and status are columns
+#'   in data.
 #' @param metrics A character vector specifying which performance metrics to be
 #'   computed. Options are c("auc", "brier", "oeratio", "calplot").
-#' @param null_model If TRUE fit a risk prediction model which ignores the
-#'   covariates and predicts the same value for all subjects.
 #' @param time_horizon For time to event data, the prediction horizon of
 #'   interest.
+#' @param cens_model Model for estimating inverse probability of censored
+#'   weights (IPCW). Methods currently implemented are Kaplan-Meier ("KM") or
+#'   Cox ("cox"), both applied to the censored times. KM is only supported when
+#'   the right hand side of cens_formula is 1.
+#' @param cens_formula Formula for which the r.h.s. determines the censoring
+#'   probabilities. I.e. ~ x1 + x2.
+#' @param null_model If TRUE fit a risk prediction model which ignores the
+#'   covariates and predicts the same value for all subjects. For time-to-event
+#'   outcomes, the subjects are 'counterfactually' uncensored (using the
+#'   IPCW, as estimated using the cens_formula, or as given by the ipcw
+#'   argument).
+#' @param ipcw A numeric vector, containing the inverse probability of censor
+#'   weights. These are normally computed using the cens_formula, but they can
+#'   be specified directly via this argument.
 #'
 #' @returns Performance metrics in the observed dataset.
 #' @export
@@ -46,49 +58,38 @@
 #' )
 
 observed_score <- function(object, data, outcome,
-                    metrics = c("auc", "brier", "oeratio", "calplot"),
-                    null_model = FALSE, time_horizon) {
+  metrics = c("auc", "brier", "oeratio", "calplot"),
+  time_horizon, cens_model = "KM", cens_formula = ~ 1,
+  null_model = TRUE, ipcw) {
 
-  # make a list of risk predictions
-  object <- make_list_if_not_list(object)
-  score_predictions <- lapply(
-    X = object,
-    FUN = function(x) {
-      if (is.numeric(x) && is.null(dim(x))) {
-        x # user supplied risk predictions
-      } else {
-        stats::predict(x, newdata = data, type = "response")
-      }
-    }
-  )
+  # observed score can be achieved by calling ip_score with some fake treatment
+  # value that everybody has, and with iptw = 1 for everybody
 
-  # performance of observed data, can be computed by setting everyone's treatment
-  # to the treatment of interest. This way all subjects are used
-  score_trt <- list(
-    "observed" = rep(1, nrow(data)),
-    "treatment_of_interest" = 1
-  )
+  if ("ipscore_fake_trt" %in% names(data))
+    stop("column name ipscore_fake_trt is reserved for internal use.")
 
-  score_outcome <- extract_outcome(data, substitute(outcome), time_horizon)
+  data$ipscore_fake_trt <- 1
+  data2 <- data
+  treatment_of_interest <- 1
+  treatment_formula <- ipscore_fake_trt ~ 1
 
-  score_ipt <- list("weights" = rep(1, nrow(data)))
-  score_ipc <- get_ipcw(ipcw = rep(1, nrow(data)))
+  cl <- match.call()
+  cl[[1]] <- quote(ip_score)
 
-  if (null_model) {
-    score_predictions <- fit_null(score_trt, score_outcome,
-                                  score_predictions, score_ipt, score_ipc)
-  }
+  cl$data <- data2
+  cl$treatment_formula <- quote(ipscore_fake_trt ~ 1)
+  cl$treatment_of_interest <- 1
+  cl$stable_iptw <- FALSE
+  cl$iptw <- rep(1, nrow(data))
 
-  ip_object <- construct_ip_object(
-    outcome = score_outcome,
-    treatment = score_trt,
-    predictions = score_predictions,
-    ipt = score_ipt,
-    ipc = score_ipc,
-    metrics = metrics
-  )
-  ip_object <- add_to_ip_object(ip_object, "quiet", TRUE)
-  ip_object <- compute_metrics(ip_object)
+  observed_score <- eval.parent(cl)
 
-  return(ip_object)
+  # remove artifacts from ip_score that are not important for observed score
+  observed_score$treatment <- NULL
+  observed_score$pseudopop <- NULL
+  observed_score$ipt <- NULL
+  observed_score$quiet <- NULL
+  class(observed_score) <- NULL
+
+  return(observed_score)
 }

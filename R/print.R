@@ -47,8 +47,8 @@ plot.ip_score <- function(x, ...) {
        asp = 1,
        xlab = "Predicted", ylab = "Observed")
   graphics::title(
-    main = "Counterfactual calibration plot",
-    sub = paste0("Calibration plot had everyone followed treatment option ", x$treatment_of_interest),
+    main = paste0("Calibration had everyone followed treatment ",
+                  x$treatment$treatment_of_interest),
     col.sub = "#404040",
     cex.sub = 0.8
   )
@@ -81,8 +81,9 @@ plot.ip_score <- function(x, ...) {
            xlab = "Predicted", ylab = "Observed",
            asp = 1)
       graphics::title(
-        main = paste0("Counterfactual calibration plot for ", m),
-        sub = paste0("Calibration plot had everyone followed treatment option ", x$treatment_of_interest),
+        main = paste0("Calibration plot for ", m),
+        sub = paste0("Calibration had everyone followed treatment ",
+                     x$treatment$treatment_of_interest),
         col.sub = "#404040",
         cex.sub = 0.8
       )
@@ -116,35 +117,137 @@ plot.ip_score <- function(x, ...) {
 
 assumptions <- function(x) {
 
-  pp("Estimation of the performance of the prediction model in a counterfactual
-     (CF) dataset where everyone's treatment ", x$treatment$treatment_column,
-     " was set to ", x$treatment$treatment_of_interest, ".")
+  if (!is.null(x$ipt$confounders)) {
+    confounders <- paste0("{", paste0(x$ipt$confounders, collapse = ", "), "}")
+  } else {
+    confounders <- "{unknown}"
+  }
+
+  if (!is.null(x$ipc$cens_formula)) {
+    cv <- all.vars(x$ipc$cens_formula)[-c(1,2)]
+    cens_vars <- paste0("{", paste0(cv, collapse = ", "), "}")
+  } else {
+    cens_vars <- "{unknown}"
+  }
+
+  trt_col <- x$treatment$treatment_column
+  trt_val <- x$treatment$treatment_of_interest
+  pp <- x$pseudopop$ids
+  horizon <- x$outcome$time_horizon
+
+
+  pp("Estimation of the performance of the prediction model in a pseudopopulation
+     where everyone's treatment ", trt_col, " was set to ", trt_val, ".")
+
+  if (x$outcome$type == "binary") {
+    pp("The pseudopopulation ($pseudopop) is constructed from ", sum(pp),
+       " (", round(mean(pp)*100,1),
+       "%) subjects who indeed received treatment level ", trt_val,
+       ". These subjects are reweighted to represent the full target population
+       under a hypothetical intervention in which everyone received this
+       treatment level.")
+  } else {
+    pp("The pseudopopulation ($pseudopop) is constructed from ", sum(pp),
+       " (", round(mean(pp)*100,1),
+       "%) subjects who indeed received treatment level ", trt_val,
+       " and remained uncensored till time=", horizon,
+       ". These subjects are reweighted to represent the full target population
+       under a hypothetical intervention in which everyone received this
+       treatment level and remained uncensored till time=", horizon, ".")
+  }
 
   pp("The following assumptions must be satisfied for correct inference:")
 
-  pp(" - Conditional exchangeability requires that the inverse probability of
-  treatment weights are sufficient to adjust for confounding between treatment
-     and outcome.")
+  pp("")
+  pp("Causal assumptions:")
+  pp("")
 
-  pp("- Conditional positivity (assess $ipt$weights for outliers)")
+  pp("- Conditional exchangeability: after adjustment for the covariates used to construct
+  the inverse probability of treatment weights (IPTW), i.e., ", confounders,
+  ", there are no unmeasured confounders of treatment assignment and outcome.")
 
-  pp("- Consistency (including no interference)")
+  pp("- Conditional positivity: the probability of receiving treatment level ",
+     trt_val, " should be greated than zero for each combination of the
+     variables ", confounders, " that is observed in the full population. The
+     distribution of IPT-weights can be assessed with
+     $ipt$weights[$pseudopop$ids].")
 
-  if (x$ipt$method == "binomial glm") {
-    pp("- Correctly specified propensity model. Estimated treatment model is ",
-       print_model(x$ipt$model), ". See also $ipt$model")
+  pp("- Consistency: the observed outcome under the received treatment equals
+     the potential outcome under that treatment. This includes the assumption of
+     no interference between subjects.")
+
+  if (x$outcome$type == "survival") {
+    if (x$ipc$method == "KM") {
+      pp("- Independent censoring. The censoring mechanism is completely
+         independent of the outcome process.")
+      pp("- Positivity for censoring: requires that the probability of remaining
+         uncensored till time=", horizon, " is greater than zero. The
+         distribution of IPC-weights can be assessed with
+         $ipc$weights[$pseudopop$ids].")
+    } else if (x$ipc$method == "cox") {
+      pp("- Conditionally independent censoring: conditional on variables ",
+         cens_vars, ", censoring is independent of the outcome process.")
+      pp("- Conditional positivity for censoring: requires that for all observed
+         combinations of the covariate variables ", cens_vars, " the probability
+         of remaining uncensored till time=", horizon, " is greater than zero.
+         The distribution of IPC-weights can be assessed with
+         $ipc$weights[$pseudopop$ids].")
+    } else {
+      pp("- The censoring mechanism is adjusted for by the manually specified
+         inverse probability of censoring weights (IPCW).")
+    }
+  }
+
+
+  pp("")
+  pp("Modeling assumptions:")
+  pp("")
+
+  if (x$ipt$method %in% c("binomial glm", "stabilized weights")) {
+
+    pp("- Correctly specified propensity model. Estimated treatment model is")
+    pp(print_model(x$ipt$model), ". See also $ipt$model.")
+
+    if (x$ipt$method == "stabilized weights") {
+
+      pp("* Stabilized weights were used. Estimated stabilized model is ")
+      pp(print_model(x$ipt$stable_model), ". See also $ipt$stable_model.
+      Pseudopopulation weights ($ipt$weights) are the probability of
+      treatment from $ipt$stable_model divided by probability of treatment
+         from $ipt$model.")
+
+    }
   } else {
-    pp("- Correct IPT-weights (as manually specified)")
+
+    pp("- The supplied inverse probability of treatment weights (IPTW) are
+       assumed to be valid.")
+
   }
 
   if (x$outcome$type == "survival") {
+
     switch(x$ipc$method,
-    KM = pp("- Non-informative censoring. See also $ipc"),
-    cox = pp(" - Correctly specified censoring model. Estimated censoring
-      distribution is ", print_censor_model(x$ipc$model), ". See also $ipc"),
-    pp("- Correct IPC-weights (as manually specified)")
+
+    KM = {
+      pp("- The censoring distribution was estimated nonparametrically using
+             the Kaplan-Meier estimator. The probability of remaining uncensored
+            is ")
+      pp("  ", print_km(x$ipc$model, horizon),
+         ". See also $ipc$model.")
+    },
+    cox = {
+      pp("- Correctly specified censoring model. The estimated censoring
+      model is ")
+      pp(" ", print_censor_model(x$ipc$model), ". See also $ipc$model.")
+    },
+
+    pp("- The supplied inverse probability of censoring weights (IPCW) are
+       assumed to be valid.")
     )
   }
+
+  pp("")
+  pp("Performance estimates:")
 }
 
 
@@ -167,9 +270,17 @@ print_model <- function(model) {
 }
 
 print_censor_model <- function(cox) {
-
-  var_names <- names(cox$coefficients)
-  coef <- round(unname(cox$coefficients), 2)
-  LP <- paste(coef, var_names, sep = "*", collapse = " + ")
+  if (is.null(cox$coefficients)) {
+    LP <- "0"
+  } else {
+    var_names <- names(cox$coefficients)
+    coef <- round(unname(cox$coefficients), 2)
+    LP <- paste(coef, var_names, sep = "*", collapse = " + ")
+  }
   paste0("P(C > t) = C_0(t)^exp(", LP, ")")
+}
+
+print_km <- function(km, time_horizon) {
+  paste0("P(C > ", time_horizon, ") = ",
+         round(stats::predict(km, times = time_horizon), 2))
 }

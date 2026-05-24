@@ -19,10 +19,7 @@ cf_metric <- function(metric, ...) {
 
 # Brier
 
-cf_brier <- function(obs_outcome, obs_trt, cf_pred, cf_trt, ipw, ...) {
-
-  # indices of persons that follow the trt of interest
-  pseudo_i <- obs_trt == cf_trt
+cf_brier <- function(obs_outcome, cf_pred, pseudo_i, ipw, ...) {
 
   # cf brier score is brier score of weighted pseudopop
   1 / sum(ipw[pseudo_i]) *
@@ -31,11 +28,10 @@ cf_brier <- function(obs_outcome, obs_trt, cf_pred, cf_trt, ipw, ...) {
     )
 }
 
-cf_brier_scaled <- function(obs_outcome, obs_trt, cf_pred, cf_trt, ipw, ...) {
 
-  brier <- cf_brier(obs_outcome, obs_trt, cf_pred, cf_trt, ipw)
+cf_brier_scaled <- function(obs_outcome, cf_pred, pseudo_i, ipw, ...) {
 
-  pseudo_i <- obs_trt == cf_trt
+  brier <- cf_brier(obs_outcome, cf_pred, pseudo_i, ipw)
 
   nullpred <- stats::weighted.mean(
     x = obs_outcome[pseudo_i],
@@ -43,7 +39,8 @@ cf_brier_scaled <- function(obs_outcome, obs_trt, cf_pred, cf_trt, ipw, ...) {
   )
   nullpreds <- rep(nullpred, length(obs_outcome))
 
-  brier_null <- cf_brier(obs_outcome, obs_trt, nullpreds, cf_trt, ipw)
+
+  brier_null <- cf_brier(obs_outcome, nullpreds, pseudo_i, ipw)
 
   (1 - brier/brier_null)*100
 
@@ -51,11 +48,7 @@ cf_brier_scaled <- function(obs_outcome, obs_trt, cf_pred, cf_trt, ipw, ...) {
 
 # AUC
 
-cf_auc <- function(obs_outcome, obs_trt, cf_pred, cf_trt, ipw, ...) {
-
-  # indices of persons that follow the trt of interest
-  pseudo_i <- obs_trt == cf_trt
-
+cf_auc <- function(obs_outcome, cf_pred, pseudo_i, ipw, ...) {
   obs_outcome <- obs_outcome[pseudo_i]
   cf_pred <- cf_pred[pseudo_i]
   ipw <- ipw[pseudo_i]
@@ -90,10 +83,7 @@ cf_auc <- function(obs_outcome, obs_trt, cf_pred, cf_trt, ipw, ...) {
 # calibration
 
 # # oe ratio
-cf_oeratio <- function(obs_outcome, obs_trt, cf_pred, cf_trt, ipw, ...) {
-
-  # indices of persons that follow the trt of interest
-  pseudo_i <- obs_trt == cf_trt
+cf_oeratio <- function(obs_outcome, cf_pred, pseudo_i, ipw, ...) {
 
   observed <- stats::weighted.mean(
     x = obs_outcome[pseudo_i],
@@ -105,33 +95,15 @@ cf_oeratio <- function(obs_outcome, obs_trt, cf_pred, cf_trt, ipw, ...) {
   return(observed/expected)
 }
 
-cf_oeratio_pp <- function(obs_outcome, obs_trt, cf_pred, cf_trt, ipw, ...) {
-
-  # indices of persons that follow the trt of interest
-  pseudo_i <- obs_trt == cf_trt
-
-  observed <- stats::weighted.mean(
-    x = obs_outcome[pseudo_i],
-    w = ipw[pseudo_i]
-  )
-
-  expected <- stats::weighted.mean(
-    x = cf_pred[pseudo_i],
-    w = ipw[pseudo_i]
-  )
-
-  return(observed/expected)
-}
-
 # # calibration plot
 
-cf_calplot <- function(obs_outcome, obs_trt, cf_pred, cf_trt, ipw, n = 8, ...) {
+cf_calplot <- function(obs_outcome, cf_pred, pseudo_i, ipw, n = 8, ...) {
 
   # it does not make sense to split the data into more groups than there is
   # unique data. E.g. for the null model, we want one group, not 8.
   n_breaks <- min(n, length(unique(cf_pred)))
 
-  cal <- data.frame(obs_outcome, obs_trt, cf_pred, ipw)
+  cal <- data.frame(obs_outcome, pseudo_i, cf_pred, ipw)
   cal <- cal[order(cf_pred), ]
   if (n_breaks >= 2) {
     cal$group <- cut(seq_len(nrow(cal)), breaks = n_breaks, labels = F)
@@ -146,7 +118,7 @@ cf_calplot <- function(obs_outcome, obs_trt, cf_pred, cf_trt, ipw, n = 8, ...) {
     FUN = mean
   )
 
-  cal_pseudo <- cal[cal$obs_trt == cf_trt, ]
+  cal_pseudo <- cal[cal$pseudo_i, ]
 
   mean_obs <- tapply(
     X = cal_pseudo,
@@ -155,6 +127,6 @@ cf_calplot <- function(obs_outcome, obs_trt, cf_pred, cf_trt, ipw, n = 8, ...) {
   )
 
   calplot <- list(pred = unname(mean_preds), obs = unname(mean_obs))
-  # class(calplot) <- "calibration_plot"
+
   calplot
 }

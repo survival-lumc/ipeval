@@ -1,3 +1,18 @@
+strip_glm <- function(fit) {
+  fit[c(
+    "residuals",
+    "fitted.values",
+    "effects",
+    "qr",
+    "linear.predictors",
+    "weights",
+    "prior.weights",
+    "data"
+  )] <- NULL
+
+  fit
+}
+
 is.formula <- function(x) {
   inherits(x, "formula")
 }

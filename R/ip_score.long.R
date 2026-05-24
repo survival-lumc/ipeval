@@ -92,6 +92,9 @@ ip_score_long <- function(probabilities, data_outcome, data_long,
   stopifnot("first visit time must be at t=0" = visit_times[0] == 0)
   stopifnot("last visit time must be before time horizon" =
               max(visit_times) < time_horizon)
+  stopifnot("id" %in% names(data_outcome))
+  stopifnot("id" %in% names(data_long))
+
 
 
   if (is.character(treatment_of_interest) && treatment_of_interest == "always")
@@ -99,10 +102,9 @@ ip_score_long <- function(probabilities, data_outcome, data_long,
   if (is.character(treatment_of_interest) && treatment_of_interest == "never")
     treatment_of_interest <- rep(0, n_visits)
 
-  # create get_iptw long fct instead of this
-  ipt_visit <- ipt_weights(data_long, treatment_formula)
-  ipt_product <- tapply(ipt_visit$weights, data_long$id,
-                        FUN = prod)
+
+  ipt_long <- get_iptw_long(data_long, treatment_formula)
+  return(ipt_long)
 
   data_flat <- data.frame(
     id = unique(data_long$id),
@@ -176,6 +178,15 @@ threshold_weights <- function(weights, quantile_bound) {
   upper_bound <- quantile(weights, quantile_bound)[[1]]
   weights[weights > upper_bound] <- upper_bound
   return(weights)
+}
+
+get_iptw_long <- function(data_long, treatment_formula) {
+  # ipt_visit <- ipt_weights(data_long, treatment_formula)
+  # ipt_product <- tapply(ipt_visit$weights, data_long$id,
+  #                       FUN = prod)
+
+  ipt_visit <- get_iptw(treatment_formula, data_long, stable_iptw = FALSE)
+  return(ipt_visit)
 }
 
 get_ipcw_long <- function(cens_formula, data_outcome, data_long,

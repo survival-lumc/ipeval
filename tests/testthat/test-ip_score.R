@@ -22,7 +22,6 @@ test_that("wrong input throws sensible errors", {
     ip_score(predictions[1:999], data = my_data, outcome = status, A ~ L, 1),
     "Predictions must be of length nrow"
   )
-
   expect_error(
     ip_score(lm(status ~ A, my_data), data = my_data, outcome = status, A ~ L, 1),
     "model class lm not supported"
@@ -55,7 +54,9 @@ test_that("wrong input throws sensible errors", {
     "no controls"
   )
 
-  # treatment
+  # treatment ---------------------------------------------------------------
+
+
   expect_error(
     ip_score(predictions, my_data, status, A + B ~ L, 1),
     "treatment formula must be one variable"
@@ -82,8 +83,9 @@ test_that("wrong input throws sensible errors", {
              iptw = runif(n), bootstrap = 50, bootstrap_progress = FALSE),
     "can't bootstrap"
   )
-
 })
+
+
 
 test_that("supplying (list of) model or predictions equivalent", {
   set.seed(1)
@@ -555,11 +557,12 @@ test_that("ip_score metrics equal to unobserved CF metrics, surv, KM censor, sta
     cens_model = "KM",
     cens_formula = ~ 1,
     stable_iptw = TRUE,
-    null_model = FALSE
+    null_model = FALSE,
+    metrics = c("auc", "brier", "oeratio")
   )
 
-  stable_min <- min(ip_score$ipt$weights)
-  stable_max <- max(ip_score$ipt$weights)
+  stable_min <- min(ip_score$ipt$weights, na.rm = TRUE)
+  stable_max <- max(ip_score$ipt$weights, na.rm = TRUE)
 
   ip_score_unstable <- ip_score(
     data = data,
@@ -574,8 +577,8 @@ test_that("ip_score metrics equal to unobserved CF metrics, surv, KM censor, sta
     null_model = FALSE
   )
 
-  unstable_min <- min(ip_score_unstable$ipt$weights)
-  unstable_max <- max(ip_score_unstable$ipt$weights)
+  unstable_min <- min(ip_score_unstable$ipt$weights, na.rm = TRUE)
+  unstable_max <- max(ip_score_unstable$ipt$weights, na.rm = TRUE)
 
   expect_true(stable_min <= unstable_min)
   expect_true(stable_max <= unstable_max)
@@ -720,7 +723,7 @@ test_that("null model binary outcome", {
     )
   )
 
-  nullmodel <- glm(Y0 ~ 1, data = data)
+  nullmodel <- lm(Y0 ~ 1, data = data)
 
   ip_score <- ip_score(model, data, Y, A ~ L, 0,
                      metrics = c("brier", "scaled_brier"), null_model = TRUE)
