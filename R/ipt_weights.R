@@ -1,12 +1,12 @@
 ipt_weights <- function(data, propensity_formula, treatment_of_interest,
-                        strip_glm = TRUE) {
+                        strip_model = TRUE) {
 
   trt_variable <- all.vars(propensity_formula)[1]
   propensity_model <- stats::glm(propensity_formula, family = "binomial", data,
                                  x = FALSE, y = FALSE, model = FALSE)
   prop_score <- unname(stats::predict(propensity_model, type = "response"))
 
-  if (strip_glm) {
+  if (strip_model) {
     propensity_model <- strip_glm(propensity_model)
   }
 

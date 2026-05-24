@@ -91,6 +91,10 @@
 #'   be specified directly via this argument. If specified via this argument,
 #'   bootstrap is not possible.
 #' @param quiet If set to TRUE, don't print assumptions.
+#' @param strip_ipt_models If set to TRUE (default), the models for the IPT
+#' and IPC-weights are stripped of unnecessary data. Set to FALSE if you plan
+#' to do extensive diagnostics on the fitted IPT/IPC models. The resulting
+#' `ip_score` object will use quite a lot more memory.
 #'
 #' @returns An object of class `ip_score`, for which the `print()` and `plot()`
 #' methods are implemented. The object is a nested list containing: \itemize{
@@ -155,7 +159,7 @@ ip_score <- function(object, data, outcome, treatment_formula,
                      time_horizon, cens_model = "KM", cens_formula = ~ 1,
                      null_model = TRUE, stable_iptw = FALSE,
                      bootstrap = 0, bootstrap_progress = TRUE,
-                     iptw, ipcw, quiet = FALSE) {
+                     iptw, ipcw, quiet = FALSE, strip_ipt_models = TRUE) {
 
   # checking inputs ---------------------------------------------------------
 
@@ -192,7 +196,8 @@ ip_score <- function(object, data, outcome, treatment_formula,
   score_pseudopop <- get_pseudopop(score_outcome, score_treatment)
 
   score_ipt <- get_iptw(treatment_formula, data, stable_iptw, iptw,
-                        treatment_of_interest = treatment_of_interest)
+                        treatment_of_interest = treatment_of_interest,
+                        strip_model = strip_ipt_models)
 
   if (score_outcome$type == "survival") {
     cens_formula <- combine_censoring_formula(cens_formula, substitute(outcome))
@@ -438,7 +443,8 @@ get_predictions <- function(object, data, treatment_column,
 }
 
 get_iptw <- function(treatment_formula, data, stable_iptw, iptw,
-                     only_weights = FALSE, treatment_of_interest) {
+                     only_weights = FALSE, treatment_of_interest,
+                     strip_model) {
   ipt <- list()
   ipt$method = "weights manually specified"
 
@@ -446,7 +452,8 @@ get_iptw <- function(treatment_formula, data, stable_iptw, iptw,
     ipt$method <- "binomial glm"
     ipt$confounders <- all.vars(treatment_formula)[-1]
     ipt$propensity_formula <- treatment_formula
-    iptw_object <- ipt_weights(data, treatment_formula, treatment_of_interest)
+    iptw_object <- ipt_weights(data, treatment_formula, treatment_of_interest,
+                               strip_model)
     ipt$model <- iptw_object$model
     iptw <- iptw_object$weights
 
@@ -455,7 +462,7 @@ get_iptw <- function(treatment_formula, data, stable_iptw, iptw,
       stable_treatment_formula <-
         stats::update.formula(treatment_formula, . ~ 1)
       sipt_object <- ipt_weights(data, stable_treatment_formula,
-                                 treatment_of_interest)
+                                 treatment_of_interest, strip_model)
       iptw <- 1/sipt_object$weights * iptw
       ipt$stable_model <- sipt_object$model
     }
