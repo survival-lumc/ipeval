@@ -75,6 +75,10 @@ test_that("ip_score categorical treatments binary outcome works", {
   data$estp2 <- unname(pred[, "B"])
   data$estp3 <- unname(pred[, "C"])
 
+  expect_equal(data$estp1[1:1000], data$p1[1:1000], tolerance = 0.005)
+  expect_equal(data$estp2[1:1000], data$p2[1:1000], tolerance = 0.005)
+  expect_equal(data$estp3[1:1000], data$p3[1:1000], tolerance = 0.005)
+
   data$weight <- with(
     data,
     ifelse(trt == "A", 1/estp1, ifelse(trt == "B", 1/estp2, 1/estp3))
