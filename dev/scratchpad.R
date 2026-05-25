@@ -48,3 +48,4 @@ data$Y <- ifelse(
     no = data$Y2
   )
 )
+

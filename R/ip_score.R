@@ -158,7 +158,7 @@ ip_score <- function(object, data, outcome, treatment_formula,
                      bootstrap = 0, bootstrap_progress = TRUE,
                      iptw, ipcw, quiet = FALSE) {
 
-
+  # browser()
   # checking inputs ---------------------------------------------------------
 
   check_missing(object)
@@ -177,6 +177,8 @@ ip_score <- function(object, data, outcome, treatment_formula,
   # assert rhs(outcome_formula != 1) iff surv model AND!missing(iptw_weights)
   # assert longest surv time is longer than time horizon, to avoid annoying
   # weights
+
+  object <- make_named_list(object, substitute(object))
 
   if (bootstrap != 0)
     stopifnot("can't bootstrap if iptw are given" = missing(iptw))
@@ -279,6 +281,45 @@ combine_censoring_formula <- function(cens_formula, outcome) {
   )
 }
 
+make_named_list <- function(object, substituteobject) {
+  # this function converts a list like list(my_model, model2)
+  # to a named list list("my_model" = my_model, "model2" = model2)
+  # or an object my_model to list("my_model" = my_model)
+  # this gives the models recognizable names
+
+  # exprs <- as.list(substituteobject)
+
+  expr_to_name <- function(x) {
+    if (is.character(x)) {
+      x
+    } else {
+      paste(deparse(x, width.cutoff = 20, nlines = 1), collapse = " ")
+    }
+  }
+
+  # if user passed a list:
+  if (is.call(substituteobject) &&
+      identical(substituteobject[[1]], as.name("list"))) {
+    exprs <- as.list(substituteobject)[-1]
+    if (is.null(names(object))) {
+      newnames <- sapply(exprs, expr_to_name)
+    } else {
+      newnames <- names(object)
+      for (i in seq_along(newnames)) {
+        if (newnames[i] == "") {
+          newnames[i] <- expr_to_name(exprs[[i]])
+        }
+      }
+    }
+    names(object) <- newnames
+  } else {
+    # if user passed 1 object, not in a list
+    object <- list(object)
+    names(object) <- expr_to_name(substituteobject)
+  }
+  return(object)
+}
+
 compute_metrics <- function(ip_object) {
   metrics <- list()
 
@@ -359,27 +400,6 @@ add_to_ip_object <- function(ip_object, name, value, after = length(ip_object)) 
   return(ip_object)
 }
 
-name_unnamed_list <- function(x) {
-  # give names, if not named
-  sapply(
-    1:length(x),
-    function(i)
-
-      if (is.null(names(x)[i]) || names(x)[i] == "") {
-        paste0("model.", i)
-      } else {
-        names(x[i])
-      }
-  )
-}
-
-make_list_if_not_list <- function(x) {
-  if (!("list" %in% class(x)))
-    x <- list(x)
-  names(x) <- name_unnamed_list(x)
-  x
-}
-
 extract_outcome <- function(data, outcome, time_horizon) {
   # attempt to extract the outcome from the data, and perform various sanity
   # checks
@@ -451,17 +471,19 @@ extract_treatment <- function(data, treatment_formula, treatment_of_interest) {
     )
     trt_list$type <- "categorical"
   } else {
-    stop("Only 1 treatment option found in data. Must have at least 2 options.")
+    if (trt_list$treatment_column != "ipscore_fake_trt") {
+      stop("Only 1 treatment option found in data. Must have at least 2 options.")
+    }
   }
   stopifnot("Specified treatment_of_interest value does not appear in data" =
               treatment_of_interest %in% trt_list$observed)
+
   trt_list
 }
 
 get_predictions <- function(object, data, treatment_column,
                             treatment_of_interest, time_horizon) {
-  # make a list of risk predictions
-  object <- make_list_if_not_list(object)
+
   predictions <- lapply(
     X = object,
     FUN = function(x) {

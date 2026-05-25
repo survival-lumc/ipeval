@@ -117,26 +117,43 @@ plot.ip_score <- function(x, ...) {
 
 assumptions <- function(x) {
 
-  pp("Estimation of the performance of the prediction model in a counterfactual
-     (CF) dataset where everyone's treatment ", x$treatment$treatment_column,
-     " was set to ", x$treatment$treatment_of_interest, ".")
+  if (!is.null(x$ipt$confounders)) {
+    confounders <- paste0("{", paste0(x$ipt$confounders, collapse = ", "), "}")
+  } else {
+    confounders <- "{unknown}"
+  }
+
+    if (!is.null(x$ipc$cens_formula)) {
+    cv <- all.vars(x$ipc$cens_formula)[-c(1,2)]
+    cens_vars <- paste0("{", paste0(cv, collapse = ", "), "}")
+  } else {
+    cens_vars <- "{unknown}"
+  }
+
+  trt_col <- x$treatment$treatment_column
+  trt_val <- x$treatment$treatment_of_interest
+  pp <- x$pseudopop$ids
+  horizon <- x$outcome$time_horizon
+
+
+  pp("Estimation of the performance of the prediction model in a pseudopopulation
+     where everyone's treatment ", trt_col, " was set to ", trt_val, ".")
 
   if (x$outcome$type == "binary") {
-    pp("The pseudopopulation ($pseudopop) consists of ", sum(x$pseudopop$ids),
-       " (", round(mean(x$pseudopop$ids)*100,1),
-       "%) subjects who originally received treatment ",
-    x$treatment$treatment_of_interest,
-    ". These subjects are reweighted to represent the target population under a
-      hypothetical intervention in which everyone received this treatment.")
+    pp("The pseudopopulation ($pseudopop) is constructed from ", sum(pp),
+       " (", round(mean(pp)*100,1),
+       "%) subjects who indeed received treatment level ", trt_val,
+       ". These subjects are reweighted to represent the full target population
+       under a hypothetical intervention in which everyone received this
+       treatment level.")
   } else {
-    pp("The pseudopopulation ($pseudopop) consists of ", sum(x$pseudopop$ids),
-       " (", round(mean(x$pseudopop$ids)*100,1),
-       "%) subjects who originally received treatment ",
-       x$treatment$treatment_of_interest,
-       " ($correct_trt) and remained uncensored ($uncensored). These subjects
-       are reweighted to represent the target population under a hypothetical
-       intervention in which everyone received this treatment and remained
-       uncensored.")
+    pp("The pseudopopulation ($pseudopop) is constructed from ", sum(pp),
+       " (", round(mean(pp)*100,1),
+       "%) subjects who indeed received treatment level ", trt_val,
+       " and remained uncensored till time=", horizon,
+       ". These subjects are reweighted to represent the full target population
+       under a hypothetical intervention in which everyone received this
+       treatment level and remained uncensored till time=", horizon, ".")
   }
 
   pp("The following assumptions must be satisfied for correct inference:")
@@ -145,12 +162,15 @@ assumptions <- function(x) {
   pp("Causal assumptions:")
   pp("")
 
-  pp("- Conditional exchangeability: after adjustment using the inverse
-     probability of treatment weights (IPTW), there are no unmeasured
-     confounders of treatment assignment and outcome.")
+  pp("- Conditional exchangeability: after adjustment for the covariates used to construct
+  the inverse probability of treatment weights (IPTW), i.e., ", confounders,
+  ", there are no unmeasured confounders of treatment assignment and outcome.")
 
-  pp("- Conditional positivity (assess $ipt$weights[$pseudopop$ids] for distribution
-     of IPT-weights in the pseudopopulation).")
+  pp("- Conditional positivity: the probability of receiving treatment level ",
+     trt_val, " should be greated than zero for each combination of the
+     variables ", confounders, " that is observed in the full population. The
+     distribution of IPT-weights can be assessed with
+     $ipt$weights[$pseudopop$ids].")
 
   pp("- Consistency: the observed outcome under the received treatment equals
      the potential outcome under that treatment. This includes the assumption of
@@ -158,12 +178,20 @@ assumptions <- function(x) {
 
   if (x$outcome$type == "survival") {
     if (x$ipc$method == "KM") {
-      pp("- Noninformative censoring. The censoring mechanism is completely
-         independent of any variables.")
+      pp("- Independent censoring. The censoring mechanism is completely
+         independent of the outcome process.")
+      pp("- Positivity for censoring: requires that the probability of remaining
+         uncensored till time=", horizon, " is greater than zero. The
+         distribution of IPC-weights can be assessed with
+         $ipc$weights[$pseudopop$ids].")
     } else if (x$ipc$method == "cox") {
-      pp("- Independent censoring: conditional on included variables, censoring
-      is independent of the outcome process. Assess $ipc$weights[$pseudopop$ids] for
-         distribution of IPC-weights in the pseudopopulaton.")
+      pp("- Conditionally independent censoring: conditional on variables ",
+         cens_vars, ", censoring is independent of the outcome process.")
+      pp("- Conditional positivity for censoring: requires that for all observed
+         combinations of the covariate variables ", cens_vars, " the probability
+         of remaining uncensored till time=", horizon, " is greater than zero.
+         The distribution of IPC-weights can be assessed with
+         $ipc$weights[$pseudopop$ids].")
     } else {
       pp("- The censoring mechanism is adjusted for by the manually specified
          inverse probability of censoring weights (IPCW).")
@@ -203,13 +231,13 @@ assumptions <- function(x) {
       pp("- The censoring distribution was estimated nonparametrically using
              the Kaplan-Meier estimator. The probability of remaining uncensored
             is ")
-      pp("  ", print_km(x$ipc$model, x$outcome$time_horizon),
+      pp("  ", print_km(x$ipc$model, horizon),
          ". See also $ipc$model.")
     },
     cox = {
       pp("- Correctly specified censoring model. The estimated censoring
       model is ")
-      pp("  ", print_censor_model(x$ipc$model), ". See also $ipc$model.")
+      pp(" ", print_censor_model(x$ipc$model), ". See also $ipc$model.")
     },
 
     pp("- The supplied inverse probability of censoring weights (IPCW) are
