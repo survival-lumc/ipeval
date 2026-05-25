@@ -120,14 +120,14 @@ test_that("supplying (list of) model or predictions equivalent", {
   expect_equal(
     ip_score(
       data = data,
-      object = list(model2),
+      object = model2,
       outcome = Y,
       treatment_formula = A ~ L,
       treatment_of_interest = 0
     ),
     ip_score(
       data = data,
-      object = predict_CF(model2, data, "A", 0),
+      object = list("model2" = predict_CF(model2, data, "A", 0)),
       outcome = Y,
       treatment_formula = A ~ L,
       treatment_of_interest = 0
