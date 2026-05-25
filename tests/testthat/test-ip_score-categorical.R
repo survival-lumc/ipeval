@@ -19,13 +19,13 @@ test_that("ip_score binary treatment but factors", {
   ips <- ip_score(modelfactor, data, outcome = Y, A_factor ~ L, "trt0")
 
   expect_equal(
-    ip_score(modelfactor, data, outcome = Y, A_factor ~ L, "trt0")$score,
-    ip_score(modelbinary, data, Y, A ~ L, 0)$score
+    ip_score(list(model = modelfactor), data, outcome = Y, A_factor ~ L, "trt0")$score,
+    ip_score(list(model = modelbinary), data, Y, A ~ L, 0)$score
   )
 
   expect_equal(
-    ip_score(modelfactor, data, Y, A_factor ~ L, "trt1")$score,
-    ip_score(modelbinary, data, Y, A ~ L, 1)$score
+    ip_score(list(model = modelfactor), data, Y, A_factor ~ L, "trt1")$score,
+    ip_score(list(model = modelbinary), data, Y, A ~ L, 1)$score
   )
 })
 
