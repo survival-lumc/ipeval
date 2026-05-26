@@ -1,3 +1,17 @@
+myfunct <- function(object) {
+  subobject <- substitute(object)
+  make_named_list(object, subobject)
+}
+
+a <- 2
+b <- 3
+
+myfunct(list(a,b))
+
+l <- list(a,b)
+myfunct(l) |> str()
+
+
 n <- 10000
 
 

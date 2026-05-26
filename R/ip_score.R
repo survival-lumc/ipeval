@@ -281,45 +281,6 @@ combine_censoring_formula <- function(cens_formula, outcome) {
   )
 }
 
-make_named_list <- function(object, substituteobject) {
-  # this function converts a list like list(my_model, model2)
-  # to a named list list("my_model" = my_model, "model2" = model2)
-  # or an object my_model to list("my_model" = my_model)
-  # this gives the models recognizable names
-
-  # exprs <- as.list(substituteobject)
-
-  expr_to_name <- function(x) {
-    if (is.character(x)) {
-      x
-    } else {
-      paste(deparse(x, width.cutoff = 20, nlines = 1), collapse = " ")
-    }
-  }
-
-  # if user passed a list:
-  if (is.call(substituteobject) &&
-      identical(substituteobject[[1]], as.name("list"))) {
-    exprs <- as.list(substituteobject)[-1]
-    if (is.null(names(object))) {
-      newnames <- sapply(exprs, expr_to_name)
-    } else {
-      newnames <- names(object)
-      for (i in seq_along(newnames)) {
-        if (newnames[i] == "") {
-          newnames[i] <- expr_to_name(exprs[[i]])
-        }
-      }
-    }
-    names(object) <- newnames
-  } else {
-    # if user passed 1 object, not in a list
-    object <- list(object)
-    names(object) <- expr_to_name(substituteobject)
-  }
-  return(object)
-}
-
 compute_metrics <- function(ip_object) {
   metrics <- list()
 
