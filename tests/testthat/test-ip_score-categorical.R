@@ -31,7 +31,9 @@ test_that("ip_score binary treatment but factors", {
 
 test_that("ip_score categorical treatments binary outcome works", {
 
-  n <- 200000
+  set.seed(123)
+
+  n <- 1000000
 
   data <- data.frame(id = 1:n)
   data$L <- rnorm(n, 0.2, 2)
@@ -85,15 +87,24 @@ test_that("ip_score categorical treatments binary outcome works", {
   )
 
 
-
   naivemodel <- glm(Y ~ trt + P, family = "binomial", data = data)
-  causalmodel <- glm(Y ~ trt + P, family = "binomial", data,
+  suppressWarnings(
+    causalmodel <- glm(Y ~ trt + P, family = "binomial", data,
                      weights = weight)
+  )
   fullmodel <- glm(Y ~ trt + P + L, family = "binomial", data = data)
 
-  predA <- predict_CF(naivemodel, data, "trt", "A")
-  predB <- predict_CF(naivemodel, data, "trt", "B")
-  predC <- predict_CF(naivemodel, data, "trt", "C")
+  naivepredA <- predict_CF(naivemodel, data, "trt", "A")
+  naivepredB <- predict_CF(naivemodel, data, "trt", "B")
+  naivepredC <- predict_CF(naivemodel, data, "trt", "C")
+
+  causalpredA <- predict_CF(causalmodel, data, "trt", "A")
+  causalpredB <- predict_CF(causalmodel, data, "trt", "B")
+  causalpredC <- predict_CF(causalmodel, data, "trt", "C")
+
+  fullpredA <- predict_CF(fullmodel, data, "trt", "A")
+  fullpredB <- predict_CF(fullmodel, data, "trt", "B")
+  fullpredC <- predict_CF(fullmodel, data, "trt", "C")
 
   correctA <- data$YA
   correctB <- data$YB
@@ -103,24 +114,23 @@ test_that("ip_score categorical treatments binary outcome works", {
   always1 <- rep(1, n)
   random <- runif(n)
 
-  models <- list(predA, predB, predC,
+  models <- list(naivepredA, naivepredB, naivepredC,
+                 causalpredA, causalpredB, causalpredC,
+                 fullpredA, fullpredB, fullpredC,
                  correctA, correctB, correctC, always0, always1,
                  random)
 
-  ipsA <- ip_score(models, data, Y, trt ~ L, "A", null_model = F)
-  obsA <- observed_score(models, data, YA)
-  ipsB <- ip_score(models, data, Y, trt ~ L, "B", null_model = F)
-  obsB <- observed_score(models, data, YB)
-  ipsC <- ip_score(models, data, Y, trt ~ L, "C", null_model = F)
-  obsC <- observed_score(models, data, YC)
+  metrics <- c("auc", "brier", "oeratio")
 
-  expect_equal(ipsA$score, obsA$score, tolerance = 0.03)
-  expect_equal(ipsB$score, obsB$score, tolerance = 0.03)
-  expect_equal(ipsC$score, obsC$score, tolerance = 0.03)
+  ipsA <- ip_score(models, data, Y, trt ~ L, "A", metrics = metrics)
+  obsA <- observed_score(models, data, YA, metrics = metrics)
+  ipsB <- ip_score(models, data, Y, trt ~ L, "B", metrics = metrics)
+  obsB <- observed_score(models, data, YB, metrics = metrics)
+  ipsC <- ip_score(models, data, Y, trt ~ L, "C", metrics = metrics)
+  obsC <- observed_score(models, data, YC, metrics = metrics)
 
-
-
-
-
+  expect_equal(ipsA$score, obsA$score, tolerance = 0.02)
+  expect_equal(ipsB$score, obsB$score, tolerance = 0.02)
+  expect_equal(ipsC$score, obsC$score, tolerance = 0.02)
 
 })
