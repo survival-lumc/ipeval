@@ -203,7 +203,7 @@ ip_score <- function(object, data, outcome, treatment_formula,
     score_treatment = score_treatment,
     iptw = iptw,
     stable_iptw = stable_iptw,
-    strip_model = strip_model
+    strip_model = strip_ipt_models
   )
 
   if (score_outcome$type == "survival") {

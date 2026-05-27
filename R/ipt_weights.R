@@ -1,5 +1,5 @@
-ipt_weights <- function(data, propensity_formula, treatment_of_interest,
-                        strip_model = TRUE) {
+ipt_weights <- function(data, propensity_formula, treatment_of_interest = NA,
+                        type = "binary", strip_model = TRUE) {
 
   trt_variable <- all.vars(propensity_formula)[1]
 
@@ -17,7 +17,7 @@ ipt_weights <- function(data, propensity_formula, treatment_of_interest,
   weights <- 1 / model_prob[[2]]
 
   # set weights of patients outside pseudopopulation to NA
-  if (!missing(treatment_of_interest)) {
+  if (!is.na(treatment_of_interest)) {
     weights[data[[trt_variable]] != treatment_of_interest] <- NA
   }
 

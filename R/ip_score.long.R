@@ -110,7 +110,13 @@ ip_score_long <- function(probabilities, data_outcome, data_long,
                                    substitute(survival::Surv(time, status)),
                                    time_horizon = time_horizon)
 
-  score_ipt <- get_iptw_long(data_long, treatment_formula, strip_ipt_models)
+  # treatment of interest in this function is not really important.
+  # we only require this for iptw.
+  score_treatment_long <- extract_treatment(data_long, treatment_formula,
+                                            treatment_of_interest[1])
+  score_treatment_long$treatment_of_interest <- NA
+
+  score_ipt <- get_iptw_long(data_long, score_treatment_long, strip_ipt_models)
 
   data_flat <- data.frame(
     id = unique(data_long$id),
@@ -127,6 +133,9 @@ ip_score_long <- function(probabilities, data_outcome, data_long,
 
   score_ipc <- get_ipcw_long(cens_formula, data_outcome, data_long,
                        cens_model, time_horizon)
+
+
+  probabilities <- make_named_list(probabilities, substitute(probabilities))
 
   score_predictions <- get_predictions(probabilities, data_flat)
 
@@ -185,10 +194,10 @@ threshold_weights <- function(weights, quantile_bound) {
   return(weights)
 }
 
-get_iptw_long <- function(data_long, treatment_formula, strip_model = TRUE) {
+get_iptw_long <- function(data_long, score_treatment, strip_model = TRUE) {
 
-  ipt_visit <- get_iptw(treatment_formula, data_long, stable_iptw = FALSE,
-                        strip_model = strip_model)
+  ipt_visit <- get_iptw(data_long, score_treatment, stable_iptw = FALSE,
+                       only_weights = FALSE, strip_model = strip_model)
 
   # the above line computes the visit IPT weights. We require the patient
   # ITP weights to be stored in the $weights part.
