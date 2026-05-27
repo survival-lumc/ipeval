@@ -189,6 +189,55 @@ test_that("iptw/ipcw manual specification equivalent to models", {
   expect_equal(cf_model_ipcw$score, cf_manual_ipcw$score)
   expect_equal(cf_model_ipcw$ipc$weights, cf_manual_ipcw$ipc$weights)
 
+  # bootstrap blocked for iptw vector?
+  expect_error(
+    cf_manual_iptw <- ip_score(predictions, data, status, A ~ 1, 0,
+                               iptw = cf_model_iptw$ipt$weights, bootstrap = 5),
+    regexp = "can't bootstrap if iptw are given"
+  )
+
+
+  # test if passing a function for iptw works
+
+  my_iptw_1 <- function(data) {
+    rep(1, nrow(data))
+  }
+  my_iptw_bad <- function(data) {
+    rep(1, nrow(data) + 1)
+  }
+  my_iptw_correct <- function(data) {
+    ipt_weights(data, A ~ L, treatment_of_interest = 0)$weights
+  }
+
+  expect_equal(
+    ip_score(predictions, data, status, A ~ L, 0, iptw = my_iptw_1)$ipt$weights,
+    rep(1, nrow(data))
+  )
+
+
+  expect_error(
+    ip_score(predictions, data, status, A ~ L, 0, iptw = my_iptw_bad),
+    "function specified in iptw did not return a numeric vector of length"
+  )
+
+  expect_equal(
+    ip_score(predictions, data, status, A ~ L, 0, iptw = my_iptw_correct)$score,
+    cf_model_iptw$score
+  )
+  expect_equal(
+    ip_score(predictions, data, status, A ~ L, 0, iptw = my_iptw_correct)$ipt$weights,
+    cf_model_iptw$ipt$weights
+  )
+
+  set.seed(42)
+  bootstrap_manual_fct <-
+    ip_score(predictions, data, status, A ~ L, 0, iptw = my_iptw_correct,
+             bootstrap = 5)
+  set.seed(42)
+  bootstrap_normal <- ip_score(predictions, data, status, A ~ L, 0, bootstrap = 5)
+
+  expect_equal(bootstrap_manual_fct$bootstrap, bootstrap_normal$bootstrap)
+
 })
 
 # metrics

@@ -183,9 +183,13 @@ ip_score <- function(object, data, outcome, treatment_formula,
 
   object <- make_named_list(object, substitute(object))
 
-  if (bootstrap != 0)
-    stopifnot("can't bootstrap if iptw are given" = missing(iptw))
+  # do not allow bootstrap if iptw are given as fixed vector
+  if (bootstrap != 0 && !missing(iptw) && !is.function(iptw)) {
+    stop("can't bootstrap if iptw are given")
+  }
 
+  # start gathering information required for the computation of metrics
+  # in weighted pseudopop
   score_outcome <- extract_outcome(data, substitute(outcome), time_horizon)
 
   score_treatment <- extract_treatment(data, treatment_formula,
@@ -238,12 +242,46 @@ ip_score <- function(object, data, outcome, treatment_formula,
   return(ip_object)
 }
 
+handle_specified_ip <- function(iptcw, data, type = "iptw") {
+  # if the user specified something in the iptw/ipcw argument, e.g. a vector of
+  # weights or a function:
+  if (is.vector(iptcw, mode = "numeric")) {
+
+    method <- "weights manually specified"
+    ipw <- iptcw
+  } else if (is.function(iptcw)) {
+
+    method <- "weights specified via function"
+
+    ipw <- do.call(iptcw, args = list("data" = data))
+
+    if ( ! (is.vector(ipw, mode = "numeric") && length(ipw) == nrow(data))) {
+
+      stop("function specified in ", type, " did not return a numeric vector ",
+           "of length data")
+    }
+  } else {
+
+    stop("argument ", type, " must be missing, a numeric vector of weights, ",
+         "or a function.")
+
+  }
+
+  return(list("method" = method, "ipw" = ipw))
+
+}
+
 get_iptw <- function(data, score_treatment, iptw, stable_iptw,
                      only_weights = FALSE, strip_model = TRUE) {
   ipt <- list()
+  # if user specified weights themselves:
   if (!missing(iptw)) {
-    ipt$method <- "weights manually specified"
+    manualiptw <- handle_specified_ip(iptw, data)
+    ipt$method <- manualiptw$method
+    iptw <- manualiptw$ipw
   } else {
+
+    # else we compute the weights ourselves.
     trt_form <- score_treatment$propensity_formula
     ipt$confounders <- all.vars(trt_form)[-1]
     ipt$propensity_formula <- trt_form
@@ -481,8 +519,14 @@ get_predictions <- function(object, data, treatment_column,
 get_ipcw <- function(cens_formula, data, cens_model, time_horizon,
                      ipcw, only_weights = FALSE, strip_ipt_models = TRUE) {
   ipc <- list()
-  ipc$method <- "weights manually specified"
-  if (missing(ipcw)) {
+
+  # if user specified weights themselves:
+  if (!missing(ipcw)) {
+    manualiptw <- handle_specified_ip(ipcw, data)
+    ipc$method <- manualiptw$method
+    ipcw <- manualiptw$ipw
+  } else {
+
     ipc$method <- cens_model
     ipc$cens_formula <- cens_formula
     ipc_object <- ipc_weights(data, ipc$cens_formula,
