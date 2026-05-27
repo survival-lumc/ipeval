@@ -6,7 +6,7 @@ flip_surv_event <- function(formula) {
   formula
 }
 
-ipc_weights <- function(data, formula, type, time_horizon) {
+ipc_weights <- function(data, formula, type, time_horizon, strip_model = TRUE) {
   # perhaps use riskRegression::ipcw()
   if (type == "KM")
     stopifnot(rhs_is_one(formula))
@@ -19,6 +19,11 @@ ipc_weights <- function(data, formula, type, time_horizon) {
     KM = {
       fit <- prodlim::prodlim(formula, data = data, reverse = TRUE)
       p_not_censor <- stats::stepfun(fit$time, c(1, fit$surv), right = TRUE)
+
+      if (strip_model) {
+        attr(fit$formula, ".Environment") <- NULL
+      }
+
       list(
         model = fit,
         probability = p_not_censor(pmin(y[, "time"], time_horizon))
@@ -30,24 +35,34 @@ ipc_weights <- function(data, formula, type, time_horizon) {
       flipped_form <- flip_surv_event(formula)
 
       fit <- survival::coxph(flipped_form, data = data, model = TRUE, x = TRUE)
+
+      p <- 1-predict_cox(fit, data, pmin(y[, "time"], time_horizon))
+
+      if (strip_model) {
+        fit <- strip_cox(fit)
+      }
+
       list(
         model = fit,
-        probability = 1-predict_cox(fit, data, pmin(y[, "time"], time_horizon))
+        probability = p
       )
+
     },
     stop("cens.model ", type, " not implemented")
   )
 
   # if censored before time horizon, weight is NA,
   # else, weight is 1/probability uncensored at event/time horizon
-  w <- ifelse(
-    y[, "status"] == 0 & y[, "time"] < time_horizon,
-    NA,
-    1 / p_uncensored$probability
+  w <- unname(
+    ifelse(
+      y[, "status"] == 0 & y[, "time"] < time_horizon,
+      NA,
+      1 / p_uncensored$probability
+    )
   )
 
   list(
     model = p_uncensored$model,
-    weights = unname(w)
+    weights = w
   )
 }

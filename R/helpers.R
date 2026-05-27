@@ -13,6 +13,17 @@ strip_glm <- function(fit) {
   fit
 }
 
+strip_cox <- function(fit) {
+  fit[c(
+    "linear.predictors",
+    "residuals",
+    "y",
+    "model"
+  )] <- NULL
+
+  fit
+}
+
 is.formula <- function(x) {
   inherits(x, "formula")
 }

@@ -132,7 +132,7 @@ ip_score_long <- function(probabilities, data_outcome, data_long,
 
 
   score_ipc <- get_ipcw_long(cens_formula, data_outcome, data_long,
-                       cens_model, time_horizon)
+                       cens_model, time_horizon, strip_ipt_models)
 
 
   probabilities <- make_named_list(probabilities, substitute(probabilities))
@@ -198,24 +198,24 @@ get_iptw_long <- function(data_long, score_treatment, strip_model = TRUE) {
 
   ipt_visit <- get_iptw(data_long, score_treatment, stable_iptw = FALSE,
                        only_weights = FALSE, strip_model = strip_model)
-
   # the above line computes the visit IPT weights. We require the patient
   # ITP weights to be stored in the $weights part.
   ipt_visit$visit_weights <- ipt_visit$weights
-  ipt_visit$weights <- tapply(
+  ipt_visit$weights <- as.vector(tapply(
     ipt_visit$visit_weights, data_long$id, FUN = prod
-  )
+  ))
 
   return(ipt_visit)
 }
 
 get_ipcw_long <- function(cens_formula, data_outcome, data_long,
-                          cens_model, time_horizon) {
+                          cens_model, time_horizon, strip_ipt_models = TRUE) {
   if (cens_model == "KM") {
     # for KM, we can use data_outcome
     ipc <- get_ipcw(Surv(time, status) ~ 1, data_outcome,
                     cens_model = "KM", time_horizon = time_horizon)
   } else if (cens_model == "cox") {
+    # for cox, it could be time dependent variables, so we split
     survintervals <- survival::survSplit(
       formula = Surv(time, status) ~ .,
       data = data_outcome,
@@ -261,7 +261,11 @@ get_ipcw_long <- function(cens_formula, data_outcome, data_long,
     ipc <- list()
     ipc$method <- "cox"
     ipc$cens_formula <- full_cens_formula
-    # ipc$model <- cens_model
+    if (strip_ipt_models) {
+      ipc$model <- strip_cox(cens_model)
+    } else {
+      ipc$model <- cens_model
+    }
     ipc$weights <- weight
 
   } else {

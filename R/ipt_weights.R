@@ -23,14 +23,15 @@ ipt_weights <- function(data, propensity_formula, treatment_of_interest = NA,
 
   list(
     model = model_prob[[1]],
-    weights = weights,
+    weights = as.vector(weights),
     method = model_prob[[3]]
   )
 }
 
 
 ipt_model_prob_binary <- function(data, propensity_formula, trt_variable) {
-  propensity_model <- stats::glm(propensity_formula, family = "binomial", data)
+  propensity_model <- stats::glm(propensity_formula, family = "binomial", data,
+                                 x = FALSE, y = FALSE, model = FALSE)
   prop_score <- unname(stats::predict(propensity_model, type = "response"))
 
   if (is.factor(data[[trt_variable]])) {

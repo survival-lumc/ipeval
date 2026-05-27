@@ -273,7 +273,7 @@ get_iptw <- function(data, score_treatment, iptw, stable_iptw,
       ipt$stable_model <- siptw_object$model
     }
   }
-  ipt$weights <- iptw
+  ipt$weights <- as.vector(iptw)
   if (only_weights == TRUE) {
     return(list("weights" = ipt$weights))
   } else {
@@ -479,16 +479,19 @@ get_predictions <- function(object, data, treatment_column,
 }
 
 get_ipcw <- function(cens_formula, data, cens_model, time_horizon,
-                     ipcw, only_weights = FALSE) {
+                     ipcw, only_weights = FALSE, strip_ipt_models = TRUE) {
   ipc <- list()
   ipc$method <- "weights manually specified"
   if (missing(ipcw)) {
     ipc$method <- cens_model
     ipc$cens_formula <- cens_formula
     ipc_object <- ipc_weights(data, ipc$cens_formula,
-                       cens_model, time_horizon)
+                       cens_model, time_horizon, strip_ipt_models)
     ipcw <- ipc_object$weights
     ipc$model <- ipc_object$model
+
+    attr(ipc$cens_formula, ".Environment") <- NULL
+
   }
   ipc$weights <- ipcw
 
