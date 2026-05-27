@@ -51,7 +51,8 @@
 #'   time-to-event data, e.g. Surv(time, status), if time and status are columns
 #'   in data.
 #' @param treatment_formula A formula which identifies the treatment (left hand
-#'   side) and the confounders (right hand side) in the data. E.g. A ~ L. The
+#'   side) and the confounders (right hand side) in the data. E.g. A ~ L.
+#'   The treatment can be either binary (0/1) or a categorical factor. The
 #'   confounders are used to estimate the inverse probability of treatment
 #'   weights (IPTW) model. The IPTW can also be specified themselves using the
 #'   iptw argument, in which case the right hand side of this formula is
@@ -98,8 +99,8 @@
 #'
 #' @returns An object of class `ip_score`, for which the `print()` and `plot()`
 #' methods are implemented. The object is a nested list containing: \itemize{
-#'   \item `$score`, which contains the predictive performance in the 'counterfactual'
-#'   dataset.
+#'   \item `$score`, which contains the predictive performance in the
+#'   'counterfactual'dataset.
 #'   \item `$outcome`, the observed outcome of the original dataset.
 #'   \item `$treatment`, the observed outcome of the original dataset.
 #'   \item `$predictions`, the predictions to be evaluated, i.e. the probability
@@ -107,12 +108,12 @@
 #'   treatment_of_interest.
 #'   \item `$ipt`, method, model and inverse probability of treatment weights
 #'   (IPTW). These are NA for patients that are not in the pseudopopulation.
-#'   \item `$ipc`, method, model and inverse probability of censoring weights (IPCW).
-#'      these are NA for patients that were censored.
-#'   \item `$correct_trt`, binary vector indicating which subjects of the original
-#'      population followed the treatment of interest.
-#'   \item `$uncensored`, binary vector indicating which subjects of the original
-#'      population were uncensored, if applicable.
+#'   \item `$ipc`, method, model and inverse probability of censoring weights
+#'   (IPCW). These are NA for patients that were censored.
+#'   \item `$correct_trt`, binary vector indicating which subjects of the
+#'   original population followed the treatment of interest.
+#'   \item `$uncensored`, binary vector indicating which subjects of the
+#'   original population were uncensored, if applicable.
 #'   \item `$pseudopop`, binary vector indicating which subjects of the original
 #'      population were in the pseudopopulation. Equal to
 #'      `$correct_trt & $uncensored`.
@@ -180,6 +181,8 @@ ip_score <- function(object, data, outcome, treatment_formula,
   # assert longest surv time is longer than time horizon, to avoid annoying
   # weights
 
+  object <- make_named_list(object, substitute(object))
+
   if (bootstrap != 0)
     stopifnot("can't bootstrap if iptw are given" = missing(iptw))
 
@@ -195,9 +198,13 @@ ip_score <- function(object, data, outcome, treatment_formula,
 
   score_pseudopop <- get_pseudopop(score_outcome, score_treatment)
 
-  score_ipt <- get_iptw(treatment_formula, data, stable_iptw, iptw,
-                        treatment_of_interest = treatment_of_interest,
-                        strip_model = strip_ipt_models)
+  score_ipt <- get_iptw(
+    data = data,
+    score_treatment = score_treatment,
+    iptw = iptw,
+    stable_iptw = stable_iptw,
+    strip_model = strip_model
+  )
 
   if (score_outcome$type == "survival") {
     cens_formula <- combine_censoring_formula(cens_formula, substitute(outcome))
@@ -229,6 +236,49 @@ ip_score <- function(object, data, outcome, treatment_formula,
 
   ip_object <- add_to_ip_object(ip_object, "quiet", quiet)
   return(ip_object)
+}
+
+get_iptw <- function(data, score_treatment, iptw, stable_iptw,
+                     only_weights = FALSE, strip_model = TRUE) {
+  ipt <- list()
+  if (!missing(iptw)) {
+    ipt$method <- "weights manually specified"
+  } else {
+    trt_form <- score_treatment$propensity_formula
+    ipt$confounders <- all.vars(trt_form)[-1]
+    ipt$propensity_formula <- trt_form
+    iptw_object <- ipt_weights(
+      data = data,
+      propensity_formula = trt_form,
+      treatment_of_interest = score_treatment$treatment_of_interest,
+      type = score_treatment$type,
+      strip_model = strip_model
+    )
+    ipt$model <- iptw_object$model
+    ipt$method <- iptw_object$method
+    iptw <- iptw_object$weights
+
+    if (stable_iptw) {
+      ipt$method <- paste0("stabilized ", ipt$method)
+      stable_treatment_formula <-
+        stats::update.formula(trt_form, . ~ 1)
+      siptw_object <- ipt_weights(
+        data = data,
+        propensity_formula = stable_treatment_formula,
+        treatment_of_interest = score_treatment$treatment_of_interest,
+        type = score_treatment$type,
+        strip_model = strip_model
+      )
+      iptw <- 1/siptw_object$weights * iptw
+      ipt$stable_model <- siptw_object$model
+    }
+  }
+  ipt$weights <- iptw
+  if (only_weights == TRUE) {
+    return(list("weights" = ipt$weights))
+  } else {
+    return(ipt)
+  }
 }
 
 combine_censoring_formula <- function(cens_formula, outcome) {
@@ -321,27 +371,6 @@ add_to_ip_object <- function(ip_object, name, value, after = length(ip_object)) 
   return(ip_object)
 }
 
-name_unnamed_list <- function(x) {
-  # give names, if not named
-  sapply(
-    1:length(x),
-    function(i)
-
-      if (is.null(names(x)[i]) || names(x)[i] == "") {
-        paste0("model.", i)
-      } else {
-        names(x[i])
-      }
-  )
-}
-
-make_list_if_not_list <- function(x) {
-  if (!("list" %in% class(x)))
-    x <- list(x)
-  names(x) <- name_unnamed_list(x)
-  x
-}
-
 extract_outcome <- function(data, outcome, time_horizon) {
   # attempt to extract the outcome from the data, and perform various sanity
   # checks
@@ -402,23 +431,30 @@ extract_treatment <- function(data, treatment_formula, treatment_of_interest) {
   trt_list$treatment_of_interest <- treatment_of_interest
   trt_list$propensity_formula <- treatment_formula
 
-  # treatment must be binary. If its not, we may be calling ip_score from
-  # observed_score, which works by setting a fake treatment column to 1 value
-  # for everyone. Otherwise stop.
-  if (!setequal(unique(trt_list$observed), c(0,1))) {
+  n_trt <- length(unique(trt_list$observed))
+
+  if (n_trt == 2) {
+    trt_list$type <- "binary"
+  } else if (n_trt >= 3) {
+    stopifnot(
+      "More than 2 treatment options found in data, but not a factor variable." =
+        is.factor(trt_list$observed)
+    )
+    trt_list$type <- "categorical"
+  } else {
     if (trt_list$treatment_column != "ipscore_fake_trt") {
-      stop("Treatment is not binary")
+      stop("Only 1 treatment option found in data. Must have at least 2 options.")
     }
   }
-  stopifnot("Treatment_of_interest must be either 0 or 1" =
-              treatment_of_interest == 0 || treatment_of_interest == 1)
+  stopifnot("Specified treatment_of_interest value does not appear in data" =
+              treatment_of_interest %in% trt_list$observed)
+
   trt_list
 }
 
 get_predictions <- function(object, data, treatment_column,
                             treatment_of_interest, time_horizon) {
-  # make a list of risk predictions
-  object <- make_list_if_not_list(object)
+
   predictions <- lapply(
     X = object,
     FUN = function(x) {
@@ -440,40 +476,6 @@ get_predictions <- function(object, data, treatment_column,
     }
   )
   predictions
-}
-
-get_iptw <- function(treatment_formula, data, stable_iptw, iptw,
-                     only_weights = FALSE, treatment_of_interest,
-                     strip_model = TRUE) {
-  ipt <- list()
-  ipt$method = "weights manually specified"
-
-  if (missing(iptw)) {
-    ipt$method <- "binomial glm"
-    ipt$confounders <- all.vars(treatment_formula)[-1]
-    ipt$propensity_formula <- treatment_formula
-    iptw_object <- ipt_weights(data, treatment_formula, treatment_of_interest,
-                               strip_model)
-    ipt$model <- iptw_object$model
-    iptw <- iptw_object$weights
-
-    if (stable_iptw == TRUE) {
-      ipt$method <- "stabilized weights"
-      stable_treatment_formula <-
-        stats::update.formula(treatment_formula, . ~ 1)
-      sipt_object <- ipt_weights(data, stable_treatment_formula,
-                                 treatment_of_interest, strip_model)
-      iptw <- 1/sipt_object$weights * iptw
-      ipt$stable_model <- sipt_object$model
-    }
-  }
-  ipt$weights <- iptw
-
-  if (only_weights == TRUE) {
-    return(list("weights" = ipt$weights))
-  } else {
-    return(ipt)
-  }
 }
 
 get_ipcw <- function(cens_formula, data, cens_model, time_horizon,

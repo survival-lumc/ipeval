@@ -69,12 +69,12 @@ test_that("wrong input throws sensible errors", {
 
   expect_error(
     ip_score(predictions, my_data, status, time ~ L, 1),
-    "Treatment is not binary"
+    "not a factor variable."
   )
 
   expect_error(
     ip_score(predictions, my_data, status, A ~ L, 2),
-    "Treatment_of_interest"
+    "treatment_of_interest value does not appear in data"
   )
 
   # other
@@ -120,14 +120,14 @@ test_that("supplying (list of) model or predictions equivalent", {
   expect_equal(
     ip_score(
       data = data,
-      object = list(model2),
+      object = model2,
       outcome = Y,
       treatment_formula = A ~ L,
       treatment_of_interest = 0
     ),
     ip_score(
       data = data,
-      object = predict_CF(model2, data, "A", 0),
+      object = list("model2" = predict_CF(model2, data, "A", 0)),
       outcome = Y,
       treatment_formula = A ~ L,
       treatment_of_interest = 0
@@ -557,6 +557,20 @@ test_that("ip_score metrics equal to unobserved CF metrics, surv, KM censor, sta
     cens_model = "KM",
     cens_formula = ~ 1,
     stable_iptw = TRUE,
+    null_model = FALSE,
+    metrics = c("auc", "brier", "oeratio")
+  )
+
+  ip_score_unstable <- ip_score(
+    data = data,
+    object = model,
+    outcome = survival::Surv(time, status),
+    treatment_formula = A ~ L,
+    treatment_of_interest = 0,
+    time_horizon = horizon,
+    cens_model = "KM",
+    cens_formula = ~ 1,
+    stable_iptw = FALSE,
     null_model = FALSE,
     metrics = c("auc", "brier", "oeratio")
   )

@@ -75,6 +75,6 @@
 <circle cx='73.08' cy='73.44' r='2.70' style='stroke-width: 0.75; stroke: #DF536B; stroke-opacity: 0.80;' />
 <circle cx='73.08' cy='87.84' r='2.70' style='stroke-width: 0.75; stroke: #61D04F; stroke-opacity: 0.80;' />
 <text x='94.68' y='77.57' style='font-size: 12.00px; font-family: sans;' textLength='54.70px' lengthAdjust='spacingAndGlyphs'>null model</text>
-<text x='94.68' y='91.97' style='font-size: 12.00px; font-family: sans;' textLength='42.70px' lengthAdjust='spacingAndGlyphs'>model.1</text>
+<text x='94.68' y='91.97' style='font-size: 12.00px; font-family: sans;' textLength='24.02px' lengthAdjust='spacingAndGlyphs'>pred</text>
 </g>
 </svg>

@@ -203,25 +203,29 @@ assumptions <- function(x) {
   pp("Modeling assumptions:")
   pp("")
 
-  if (x$ipt$method %in% c("binomial glm", "stabilized weights")) {
+  if (grepl("binomial", x$ipt$method)) {
 
     pp("- Correctly specified propensity model. Estimated treatment model is")
     pp(print_model(x$ipt$model), ". See also $ipt$model.")
 
-    if (x$ipt$method == "stabilized weights") {
+  } else if (grepl("multinomial", x$ipt$method)) {
 
-      pp("* Stabilized weights were used. Estimated stabilized model is ")
-      pp(print_model(x$ipt$stable_model), ". See also $ipt$stable_model.
-      Pseudopopulation weights ($ipt$weights) are the probability of
-      treatment from $ipt$stable_model divided by probability of treatment
-         from $ipt$model.")
+    pp("- Correctly specified propensity model. The multinomial treatment model
+       is estimated using the nnet package. See also $ipt$model.")
 
-    }
   } else {
 
     pp("- The supplied inverse probability of treatment weights (IPTW) are
        assumed to be valid.")
 
+  }
+
+  if (grepl("stabilized", x$ipt$method)) {
+
+    pp("* Stabilized weights were used. See also $ipt$stable_model.
+      Pseudopopulation weights ($ipt$weights) are the probability of
+      treatment from $ipt$stable_model divided by probability of treatment
+         from $ipt$model.")
   }
 
   if (x$outcome$type == "survival") {
