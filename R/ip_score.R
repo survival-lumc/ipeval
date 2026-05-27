@@ -1,4 +1,4 @@
-#' Counterfactual validation score
+#' Interventional prediction score
 #'
 #' Estimates the predictive performance of predictions under interventions, by
 #' forming a weighted pseudopopulation in which every subject was assigned the
@@ -20,9 +20,9 @@
 #' (observed) is the weighted fraction of events in the pseudopopulation, and
 #' the denominator (expected) is the unweighted mean of risk estimates of the
 #' original unweighted population. The \code{calplot} option generates a
-#' calibration plot, with default 8 knots. More/less knots can be specified by
-#' appending calplot with a number indicating the number of knots, e.g.
-#' \code{metrics = calplot10} for 10 knots.
+#' calibration plot, with default 8 subgroups. More/less subgroups can be specified by
+#' appending calplot with a number indicating the number of subgroups, e.g.
+#' \code{metrics = calplot10} for 10 subgroups.
 #'
 #' For the null model, the O/E ratio and the scaled Brier score, the mean
 #' predicted risk under the treatment of interest is required. This is computed
