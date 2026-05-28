@@ -77,7 +77,8 @@ ip_score_long <- function(probabilities, data_outcome, data_long,
                           treatment_formula, treatment_of_interest,
                           metrics = c("auc", "brier", "oeratio", "calplot"),
                           visit_times, time_horizon, cens_model = "KM",
-                          cens_formula = ~ 1, null_model = TRUE, quiet = FALSE,
+                          cens_formula = ~ 1, null_model = TRUE,
+                          bootstrap = 0, bootstrap_progress = TRUE, quiet = FALSE,
                           strip_ipt_models = TRUE) {
 
   # assert:
@@ -112,9 +113,7 @@ ip_score_long <- function(probabilities, data_outcome, data_long,
 
   # treatment of interest in this function is not really important.
   # we only require this for iptw.
-  score_treatment_long <- extract_treatment(data_long, treatment_formula,
-                                            treatment_of_interest[1])
-  score_treatment_long$treatment_of_interest <- NA
+  score_treatment_long <- extract_treatment(data_long, treatment_formula, NA)
 
   score_ipt <- get_iptw_long(data_long, score_treatment_long, strip_ipt_models)
 
@@ -154,6 +153,18 @@ ip_score_long <- function(probabilities, data_outcome, data_long,
     metrics = metrics
   )
   ip_object <- compute_metrics(ip_object)
+
+  # do bootstrap
+  if (bootstrap > 0) {
+    bs <- bootstrap(data_outcome, ip_object, bootstrap, bootstrap_progress, data_long)
+    ip_object <- add_to_ip_object(ip_object, "bootstrap", bs, after = 1)
+    ip_object <- add_to_ip_object(ip_object, "bootstrap_iterations", bootstrap)
+  }
+
+  # trt_of_interest was TRUE, where treatment options was compliant or not
+  # compliant in the 'flat' data.frame. Set it back to the long variant as
+  # specified for more informative printing
+  ip_object$treatment$treatment_of_interest <- treatment_of_interest
 
   ip_object <- add_to_ip_object(ip_object, "quiet", quiet)
 

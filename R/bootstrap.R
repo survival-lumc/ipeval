@@ -57,12 +57,96 @@ bootstrap_iteration <- function(data, ip_object) {
   return(metrics)
 }
 
+bootstrap_iteration_long <- function(data_outcome, data_long, ip_object) {
+  browser()
+  bs_sample <- sample(nrow(data_outcome), size = nrow(data_outcome), replace = T)
+  bs_data_outcome <- data_outcome[bs_sample, ]
+  sampled_ids <- bs_data_outcome$id
 
-bootstrap <- function(data, ip_object, iterations, progress) {
+  # assign new ids
+  bs_data_outcome$id <- seq_along(sampled_ids)
+
+  bs_data_long1 <- do.call(
+    rbind,
+    lapply(seq_along(sampled_ids), function(i) {
+
+      tmp <- data_long[data_long$id == sampled_ids[i], ]
+
+      # assign corresponding new bootstrap id
+      tmp$id <- i
+
+      tmp
+    })
+  )
+
+  # very slow above. probably some clever matching/merging?
+
+  # get the outcomes from the bootstrapped sample
+  bs_outcome <- list(
+    "observed" = ip_object$outcome$observed[bs_sample],
+    "type" = ip_object$outcome$type,
+    "time_horizon" = ip_object$outcome$time_horizon,
+    "status_at_horizon" = ip_object$outcome$status_at_horizon[bs_sample]
+  )
+
+  # get IPTW on bootstrapped data
+  bs_treatment_long <- extract_treatment(bs_data_long,
+                                         ip_object$treatment$propensity_formula,
+                                         NA)
+  bs_ipt <- get_iptw_long(bs_data_long, bs_treatment_long)
+
+  # get treatment info, which is the 'summarized' info on treatment compliance,
+  # i.e. 1 row p patient. Resampled compliant patients stay compliant.
+  bs_treatment <- ip_object$treatment
+  bs_treatment$observed <- bs_treatment$observed[bs_sample]
+
+  # should be same as ip_object$pseudopop but resampled
+  bs_pseudopop <- get_pseudopop(bs_outcome, bs_treatment)
+
+  # get censoring weights of bootstrapped sample
+  bs_ipc <- get_ipcw_long(
+    cens_formula = ip_object$ipc$cens_formula,
+    data_outcome = bs_data_outcome,
+    data_long = bs_data_long,
+    cens_model = ip_object$ipc$method,
+    time_horizon = ip_object$outcome$time_horizon,
+    strip_ipt_models = TRUE
+  )
+
+  # also resample to predictions
+  bs_probabilities <- lapply(ip_object$predictions, function(x) x[bs_sample])
+
+
+  bs_ip_object <- construct_long_ip_object(
+    outcome = bs_outcome,
+    treatment = bs_treatment,
+    predictions = bs_probabilities,
+    pseudopop = bs_pseudopop,
+    ipt = bs_ipt,
+    ipc = bs_ipc,
+    metrics = ip_object$metrics
+  )
+
+  metrics <- compute_metrics(bs_ip_object)$score
+
+  return(metrics)
+
+}
+
+# arg data_long only used for longitudinal treatment, in which data is data_outcome
+bootstrap <- function(data, ip_object, iterations, progress, data_long) {
   b <- lapply_progress(
     as.list(1:iterations),
     function(x) {
-      bootstrap_iteration(data, ip_object)
+      if (identical(class(ip_object), "ip_score")) {
+        return(bootstrap_iteration(data, ip_object))
+      } else if ("ip_score_long" %in% class(ip_object)) {
+        return(bootstrap_iteration_long(
+          data_outcome = data, data_long = data_long, ip_object)
+        )
+      } else {
+        stop("unknown class ", class(ip_object), " found for bootstrapping")
+      }
     },
     "bootstrapping",
     progress = progress

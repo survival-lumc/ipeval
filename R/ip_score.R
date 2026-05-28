@@ -484,8 +484,10 @@ extract_treatment <- function(data, treatment_formula, treatment_of_interest) {
       stop("Only 1 treatment option found in data. Must have at least 2 options.")
     }
   }
-  stopifnot("Specified treatment_of_interest value does not appear in data" =
-              treatment_of_interest %in% trt_list$observed)
+  if (!is.na(treatment_of_interest)) {
+    stopifnot("Specified treatment_of_interest value does not appear in data" =
+                treatment_of_interest %in% trt_list$observed)
+  }
 
   trt_list
 }
