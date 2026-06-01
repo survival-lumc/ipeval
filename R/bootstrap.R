@@ -1,3 +1,22 @@
+bootstrap_iteration_2 <- function(ip_object) {
+  the_call <- ip_object$the_call
+  data <- eval(the_call$data, parent.frame())
+  predictions <- ip_object$predictions
+
+  bs_sample <- sample(nrow(data), size = nrow(data), replace = T)
+  bs_data <- data[bs_sample, ]
+  bs_predictions <- lapply(predictions, function(x) x[bs_sample])
+
+  the_call$data <- bs_data
+  the_call$object <- bs_predictions
+  the_call$bootstrap <- 0
+  the_call$null_model <- FALSE
+  the_call$strip_ipt_models <- TRUE
+
+  score <- eval.parent(the_call)$score
+  return(score)
+}
+
 bootstrap_iteration <- function(data, ip_object) {
   # works by creating a new ipscore object based on the original, where all
   # required data has been resampled (& new ipt & ipc weights)
@@ -134,23 +153,43 @@ bootstrap_iteration_long <- function(data_outcome, data_long, ip_object) {
 }
 
 # arg data_long only used for longitudinal treatment, in which data is data_outcome
-bootstrap <- function(data, ip_object, iterations, progress, data_long) {
-  b <- lapply_progress(
-    as.list(1:iterations),
-    function(x) {
-      if (identical(class(ip_object), "ip_score")) {
-        return(bootstrap_iteration(data, ip_object))
-      } else if ("ip_score_long" %in% class(ip_object)) {
-        return(bootstrap_iteration_long(
-          data_outcome = data, data_long = data_long, ip_object)
-        )
-      } else {
-        stop("unknown class ", class(ip_object), " found for bootstrapping")
-      }
-    },
-    "bootstrapping",
-    progress = progress
-  )
+bootstrap <- function(data, ip_object, iterations, progress, data_long, type = 1) {
+  if (type == 1) {
+    b <- lapply_progress(
+      as.list(1:iterations),
+      function(x) {
+        if (identical(class(ip_object), "ip_score")) {
+          return(bootstrap_iteration(data, ip_object))
+        } else if ("ip_score_long" %in% class(ip_object)) {
+          return(bootstrap_iteration_long(
+            data_outcome = data, data_long = data_long, ip_object)
+          )
+        } else {
+          stop("unknown class ", class(ip_object), " found for bootstrapping")
+        }
+      },
+      "bootstrapping",
+      progress = progress
+    )
+  } else {
+    b <- lapply_progress(
+      as.list(1:iterations),
+      function(x) {
+        if (identical(class(ip_object), "ip_score")) {
+          return(bootstrap_iteration_2(ip_object))
+        } else if ("ip_score_long" %in% class(ip_object)) {
+          return(bootstrap_iteration_long(
+            data_outcome = data, data_long = data_long, ip_object)
+          )
+        } else {
+          stop("unknown class ", class(ip_object), " found for bootstrapping")
+        }
+      },
+      "bootstrapping",
+      progress = progress
+    )
+  }
+
   # transpose results
   # (iteration > metric > model) -> (metric > model > iteration)
 
