@@ -126,13 +126,14 @@ generate_long_data_cox <- function(
   data.frame(id = 1:n, time, status, A, L, U)
 }
 
-make_dev_long <- function(df_dev) {
+make_dev_long <- function(df_dev, visits = 0:4) {
+
   df_dev_long <- wide_to_long(
     df_dev,
     baseline_variables = c("id", "time", "status", "L0", "U"),
-    wide_variables = list(A = c("A0", "A1", "A2", "A3", "A4"),
-                          L = c("L0", "L1", "L2", "L3", "L4")),
-    visit_times = c(0,1,2,3,4),
+    wide_variables = list(A = paste0("A", visits),
+                          L = paste0("L", visits)),
+    visit_times = visits,
     outcome_times = df_dev$time
   )
 
@@ -149,13 +150,18 @@ make_dev_long <- function(df_dev) {
   df_dev_long
 }
 
-fit_long_cox_model <- function(data_long, visit_weights) {
+fit_long_cox_model <- function(
+    data_long, visit_weights, formula =
+      Surv(time_start, time_end, status) ~ A + A_lag_1 + A_lag_2 +
+      A_lag_3 + A_lag_4 + L0) {
+
+  data_long$visit_weights <- visit_weights
 
   cox_msm <- survival::coxph(
-    survival::Surv(time_start, time_end, status) ~ A + A_lag_1 + A_lag_2 +
-      A_lag_3 + A_lag_4 + L0,
+    formula,
     data = data_long,
-    weights = visit_weights
+    weights = visit_weights,
+    model = TRUE
   )
 }
 

@@ -1,3 +1,76 @@
+test_that("ipscore long with 1 visit is equivalent to ip_score()", {
+  n_dev <- 1000
+  n_val <- 2000
+
+  df_dev <- generate_long_data_cox(n_dev, seed = 1, n_visits = 1)
+  df_dev_long <- make_dev_long(df_dev, visits = 0)
+  iptw <- ipt_weights(df_dev_long, A ~ L * A_lag_1)$weights
+  coxmsm <- fit_long_cox_model(
+    data_long = df_dev_long,
+    visit_weights = iptw,
+    formula = Surv(time_start, time_end, status) ~ A + L0)
+
+  df_val <- generate_long_data_cox(n_val, seed = 3, n_visits = 1,
+                                   nonadministrative_censoring = TRUE,
+                                   censorLP = ~ function() { -2 + L})
+  df_val_outcome <- df_val[, c("id", "time", "status")]
+  df_val_long <- wide_to_long(df_val, "id", list(A = paste0("A", 0),
+                                                 L = paste0("L", 0)),
+                              0, df_val$time)
+  df_val_long <- add_lag_terms(df_val_long, "A")
+
+  risk_0 <- risk_under_0(coxmsm, 5, df_val$L0)
+  randomrisks <- runif(n_val)
+
+  # kaplan meier censoring
+  expect_equal(
+    ip_score_long(
+      probabilities = list(risk_0, randomrisks),
+      data_outcome = df_val_outcome,
+      data_long = df_val_long,
+      treatment_formula = A ~ L,
+      treatment_of_interest = 0,
+      visit_times = 0,
+      time_horizon = 5
+    )$score,
+    ip_score(
+      object = list(risk_0, randomrisks),
+      data = df_val,
+      outcome = Surv(time, status),
+      treatment_formula = A0 ~ L0,
+      treatment_of_interest = 0,
+      time_horizon = 5
+    )$score
+  )
+
+  # cox censoring
+  expect_equal(
+    ip_score_long(
+      probabilities = list(risk_0, randomrisks),
+      data_outcome = df_val_outcome,
+      data_long = df_val_long,
+      treatment_formula = A ~ L,
+      treatment_of_interest = 0,
+      visit_times = 0,
+      time_horizon = 5,
+      cens_model = "cox",
+      cens_formula = ~ L
+    )$score,
+    ip_score(
+      object = list(risk_0, randomrisks),
+      data = df_val,
+      outcome = Surv(time, status),
+      treatment_formula = A0 ~ L0,
+      treatment_of_interest = 0,
+      time_horizon = 5,
+      cens_model = "cox",
+      cens_formula = ~ L0
+    )$score
+  )
+
+
+})
+
 test_that("ipscore long results vs CF dataset correct", {
   n_dev <- 1000
   n_val <- 200000

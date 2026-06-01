@@ -131,7 +131,7 @@ ip_score_long <- function(probabilities, data_outcome, data_long,
 
 
   score_ipc <- get_ipcw_long(cens_formula, data_outcome, data_long,
-                       cens_model, time_horizon, strip_ipt_models)
+                       cens_model, time_horizon, visit_times,strip_ipt_models)
 
 
   probabilities <- make_named_list(probabilities, substitute(probabilities))
@@ -223,7 +223,8 @@ get_iptw_long <- function(data_long, score_treatment, strip_model = TRUE) {
 }
 
 get_ipcw_long <- function(cens_formula, data_outcome, data_long,
-                          cens_model, time_horizon, strip_ipt_models = TRUE) {
+                          cens_model, time_horizon, visit_times,
+                          strip_ipt_models = TRUE) {
   if (cens_model == "KM") {
     # for KM, we can use data_outcome
     ipc <- get_ipcw(Surv(time, status) ~ 1, data_outcome,
@@ -233,7 +234,7 @@ get_ipcw_long <- function(cens_formula, data_outcome, data_long,
     survintervals <- survival::survSplit(
       formula = Surv(time, status) ~ .,
       data = data_outcome,
-      cut = 0:4)
+      cut = visit_times)
     stopifnot(nrow(survintervals) == nrow(data_long))
     data_combined <- cbind(survintervals, data_long)
 
