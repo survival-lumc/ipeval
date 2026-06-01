@@ -385,6 +385,11 @@ test_that("ipscore long results vs CF dataset with KM censoring", {
 test_that("faithful_to_trt works", {
   ds <- data.frame(id = 1:4,time = c(5,6,7,8), A0 = c(0,0,1,1),
                      A1 = c(0,1,1,1), A2 = c(0,1,0,1), A3 = c(1,0,0,1))
+  # 0 0 0 1
+  # 0 1 1 0
+  # 1 1 0 0
+  # 1 1 1 1
+
   visit_times <- c(2,3,5,6)
   dl <- wide_to_long(ds, baseline_variables = "id",
                             list(A = paste0("A", 0:3)), visit_times = visit_times,
@@ -393,8 +398,71 @@ test_that("faithful_to_trt works", {
   expect_equal(faithful_to_trt(dl, A ~ 1, c(0,0,0,0), visit_times), c(T,F,F,F))
   expect_equal(faithful_to_trt(dl, A ~ 1, c(0,0,0,1), visit_times), c(T,F,F,F))
   expect_equal(faithful_to_trt(dl, A ~ 1, c(0,1,1,0), visit_times), c(F,T,F,F))
+  expect_equal(faithful_to_trt(dl, A ~ 1, c(NA, 1, NA, 1), visit_times), c(F, F, F, T))
+  expect_equal(faithful_to_trt(dl, A ~ 1, c(0, NA, NA, NA), visit_times), c(T, T, F, F))
+  expect_equal(faithful_to_trt(dl, A ~ 1, c(1, NA, NA, NA), visit_times), c(F, F, T, T))
 })
 
+test_that("treatment of interest patterns with NA", {
+  n_dev <- 1000
+  n_val <- 20000
+
+  df_dev <- generate_long_data_cox(n_dev, seed = 1)
+  df_dev_long <- make_dev_long(df_dev)
+  iptw <- ipt_weights(df_dev_long, A ~ L * A_lag_1)$weights
+
+  coxmsm <- fit_long_cox_model(data_long = df_dev_long, iptw)
+  badmodel <- glm(A0 ~ L0, data = df_dev, family = "binomial")
+
+  df_val <- generate_long_data_cox(n_val, seed = 3)
+  df_cf0 <- generate_long_data_cox(n_val, seed = 3, Af = ~ function() rep(0, n))
+  df_cf1 <- generate_long_data_cox(n_val, seed = 3, Af = ~ function() rep(1, n))
+
+  df_val_outcome <- df_val[, c("id", "time", "status")]
+  df_val_long <- wide_to_long(df_val, "id", list(A = paste0("A", 0:4),
+                                                 L = paste0("L", 0:4)),
+                              0:4, df_val$time)
+  df_val_long <- add_lag_terms(df_val_long, "A")
+
+
+  risk_0 <- risk_under_0(coxmsm, 5, df_val$L0)
+  risk_1 <- risk_under_1(coxmsm, 5, df_val$L0)
+  risk_bad_0 <- predict_CF(badmodel, df_val, "A0", 0)
+  risk_bad_1 <- predict_CF(badmodel, df_val, "A0", 1)
+  risk_random <- runif(n_val)
+  always_0 <- rep(0, n_val)
+  always_1 <- rep(1, n_val)
+  always_truth_under_0 <- df_cf0$status
+  always_wrong_under_0 <- 1-df_cf0$status
+  always_truth_under_1 <- df_cf1$status
+  always_wrong_under_1 <- 1-df_cf1$status
+
+
+  metrics <- c("auc", "brier", "oeratio", "calplot")
+
+  models <- list(risk_0, risk_1, risk_bad_0, risk_bad_1, risk_random,
+                 always_0, always_1, always_truth_under_0, always_wrong_under_0,
+                 always_truth_under_1, always_wrong_under_1)
+
+  score0 <- ip_score_long(
+    probabilities = models,
+    data_outcome = df_val_outcome,
+    data_long = df_val_long,
+    visit_times = 0:4,
+    time_horizon = 5,
+    treatment_formula = A ~ factor(visit_time) + L:factor(visit_time),
+    treatment_of_interest = c(0, NA, NA, NA, NA),
+    null_model = TRUE,
+    metrics = metrics
+  )
+
+  score_flat <- ip_score(
+    object = models,data = df_val, outcome = Surv(time, status),
+    treatment_formula = A0 ~ L0, treatment_of_interest = 0, metrics = metrics,
+    time_horizon = 5)
+  expect_equal(score0$score, score_flat$score)
+
+})
 
 test_that("ipscore long results vs validation under interventions paper", {
   # Using the code of Keogh, van geloven (2024) to compare our implementations

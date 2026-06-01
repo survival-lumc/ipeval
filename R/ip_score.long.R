@@ -115,7 +115,9 @@ ip_score_long <- function(probabilities, data_outcome, data_long,
   # we only require this for iptw.
   score_treatment_long <- extract_treatment(data_long, treatment_formula, NA)
 
-  score_ipt <- get_iptw_long(data_long, score_treatment_long, strip_ipt_models)
+  score_ipt <- get_iptw_long(data_long, score_treatment_long,
+                             treatment_of_interest, visit_times,
+                             strip_ipt_models)
 
   data_flat <- data.frame(
     id = unique(data_long$id),
@@ -179,11 +181,10 @@ faithful_to_trt <- function(data_long, treatment_formula,
 
   trt_var <- as.character(treatment_formula[[2]])
   visit_id <- match(data_long$visit_time, visit_times)
-
   as.vector(tapply(
     data_long[[trt_var]] == treatment_of_interest[visit_id],
     data_long$id,
-    FUN = all
+    FUN = function(x) all(x, na.rm = TRUE)
   ))
 }
 
@@ -208,10 +209,29 @@ threshold_weights <- function(weights, quantile_bound) {
   return(weights)
 }
 
-get_iptw_long <- function(data_long, score_treatment, strip_model = TRUE) {
+get_iptw_long <- function(data_long, score_treatment, treatment_of_interest,
+                          visit_times, strip_model = TRUE) {
 
   ipt_visit <- get_iptw(data_long, score_treatment, stable_iptw = FALSE,
                        only_weights = FALSE, strip_model = strip_model)
+
+  # set NA when deviating from trt of interest, and set 1 when trt of interest
+  # is NA.
+  trt_var <- as.character(score_treatment$treatment_column)
+  visit_id <- match(data_long$visit_time, visit_times)
+  required_trt <- treatment_of_interest[visit_id]
+  actual_trt <- data_long[[trt_var]]
+
+  ipt_visit$weights <- ifelse(
+    is.na(required_trt),
+    1,
+    ifelse(
+      required_trt == actual_trt,
+      ipt_visit$weights,
+      NA
+    )
+  )
+
   # the above line computes the visit IPT weights. We require the patient
   # ITP weights to be stored in the $weights part.
   ipt_visit$visit_weights <- ipt_visit$weights
