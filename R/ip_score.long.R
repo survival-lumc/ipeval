@@ -156,7 +156,10 @@ ip_score_long <- function(probabilities, data_outcome, data_long,
 
   # do bootstrap
   if (bootstrap > 0) {
-    bs <- bootstrap(data_outcome, ip_object, bootstrap, bootstrap_progress, data_long)
+    matchcall <- match.call()
+    call_env <- parent.frame()
+
+    bs <- bootstrap(ip_object, matchcall, call_env, bootstrap, bootstrap_progress)
     ip_object <- add_to_ip_object(ip_object, "bootstrap", bs, after = 1)
     ip_object <- add_to_ip_object(ip_object, "bootstrap_iterations", bootstrap)
   }
