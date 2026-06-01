@@ -48,7 +48,7 @@ plot.ip_score <- function(x, ...) {
        xlab = "Predicted", ylab = "Observed")
   graphics::title(
     main = paste0("Calibration had everyone followed treatment ",
-                  x$treatment$treatment_of_interest),
+                  pretty_trt(x$treatment$treatment_of_interest)),
     col.sub = "#404040",
     cex.sub = 0.8
   )
@@ -83,7 +83,7 @@ plot.ip_score <- function(x, ...) {
       graphics::title(
         main = paste0("Calibration plot for ", m),
         sub = paste0("Calibration had everyone followed treatment ",
-                     x$treatment$treatment_of_interest),
+                     pretty_trt(x$treatment$treatment_of_interest)),
         col.sub = "#404040",
         cex.sub = 0.8
       )
@@ -131,13 +131,18 @@ assumptions <- function(x) {
   }
 
   trt_col <- x$treatment$treatment_column
-  trt_val <- x$treatment$treatment_of_interest
+  trt_val <- pretty_trt(x$treatment$treatment_of_interest)
   pp <- x$pseudopop$ids
   horizon <- x$outcome$time_horizon
 
-
-  pp("Estimation of the performance of the prediction model in a pseudopopulation
+  if (!grepl("*", trt_val, fixed = TRUE)) {
+    pp("Estimation of the performance of the prediction model in a pseudopopulation
      where everyone's treatment ", trt_col, " was set to ", trt_val, ".")
+  } else {
+    pp("Estimation of the performance of the prediction model in a pseudopopulation
+     where everyone's treatment ", trt_col, " was set to ", trt_val,
+       ", where * can be any value as would normally be observed.")
+  }
 
   if (x$outcome$type == "binary") {
     pp("The pseudopopulation ($pseudopop) is constructed from ", sum(pp),
@@ -287,4 +292,21 @@ print_censor_model <- function(cox) {
 print_km <- function(km, time_horizon) {
   paste0("P(C > ", time_horizon, ") = ",
          round(stats::predict(km, times = time_horizon), 2))
+}
+
+pretty_trt <- function(trt_of_interest) {
+  if (length(trt_of_interest) == 1) {
+    return(trt_of_interest)
+  } else {
+    return(
+      paste0("{",
+      paste0(
+        sapply(
+          trt_of_interest,
+          function(x) { if (is.na(x)) "*" else as.character(x) }
+        ),
+        collapse = ", "
+      ), "}")
+    )
+  }
 }
