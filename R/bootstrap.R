@@ -1,80 +1,33 @@
-bootstrap_iteration_2 <- function(ip_object) {
-  the_call <- ip_object$the_call
-  data <- eval(the_call$data, parent.frame())
+bootstrap_iteration <- function(ip_object, matchcall, call_env) {
+  the_call <- matchcall
+  # extract the data and predictions from the call/ip_object
+  data <- eval(the_call$data, call_env)
   predictions <- ip_object$predictions
 
+  # sample them
   bs_sample <- sample(nrow(data), size = nrow(data), replace = T)
   bs_data <- data[bs_sample, ]
   bs_predictions <- lapply(predictions, function(x) x[bs_sample])
 
-  the_call$data <- bs_data
-  the_call$object <- bs_predictions
+  # rerun the call, this time with bootstrapped data/predictions
+  the_call$data <- quote(bs_data)
+  the_call$object <- quote(bs_predictions)
   the_call$bootstrap <- 0
   the_call$null_model <- FALSE
   the_call$strip_ipt_models <- TRUE
 
-  score <- eval.parent(the_call)$score
+  score <- eval(
+    the_call,
+    envir = list(
+      bs_data = bs_data,
+      bs_predictions = bs_predictions
+    ),
+    enclos = call_env
+  )$score
+
   return(score)
 }
 
-bootstrap_iteration <- function(data, ip_object) {
-  # works by creating a new ipscore object based on the original, where all
-  # required data has been resampled (& new ipt & ipc weights)
-
-  bs_sample <- sample(nrow(data), size = nrow(data), replace = T)
-
-  # copy ip_object but resample relevant items
-  bs_outcome <- list(
-    "observed" = ip_object$outcome$observed[bs_sample],
-    "type" = ip_object$outcome$type,
-    "time_horizon" = ip_object$outcome$time_horizon
-  )
-  bs_trt <- list(
-    "observed" = ip_object$treatment$observed[bs_sample],
-    "propensity_formula" = ip_object$treatment$propensity_formula,
-    "treatment_of_interest" = ip_object$treatment$treatment_of_interest,
-    "type" = ip_object$treatment$type
-  )
-  bs_pred <- lapply(ip_object$predictions, function(x) x[bs_sample])
-
-  bs_pseudopop <- list(ids = ip_object$pseudopop$ids[bs_sample])
-
-  # compute iptw on resampled data
-
-  bs_iptw <- get_iptw(
-    data = data[bs_sample,],
-    score_treatment = bs_trt,
-    stable_iptw = grepl("stabilized", ip_object$ipt$method),
-    only_weights = TRUE
-  )
-
-  # if survival, compute ipcw and survival status at time horizon of sample
-  if (ip_object$outcome$type == "survival") {
-    bs_ipcw <- get_ipcw(
-      cens_formula = ip_object$ipc$cens_formula,
-      data = data[bs_sample, ],
-      cens_model = ip_object$ipc$method,
-      time_horizon = ip_object$outcome$time_horizon,
-      only_weights = TRUE
-    )
-    bs_outcome$status_at_horizon <- ip_object$outcome$status_at_horizon[bs_sample]
-  } else {
-    bs_ipcw <- NULL
-  }
-
-  bs_ip_object <- construct_ip_object(
-    outcome = bs_outcome,
-    treatment = bs_trt,
-    predictions = bs_pred,
-    pseudopop = bs_pseudopop,
-    ipt = bs_iptw,
-    ipc = bs_ipcw,
-    metrics = ip_object$metrics
-  )
-
-  metrics <- compute_metrics(bs_ip_object)$score
-  return(metrics)
-}
 
 bootstrap_iteration_long <- function(data_outcome, data_long, ip_object) {
   browser()
@@ -153,42 +106,23 @@ bootstrap_iteration_long <- function(data_outcome, data_long, ip_object) {
 }
 
 # arg data_long only used for longitudinal treatment, in which data is data_outcome
-bootstrap <- function(data, ip_object, iterations, progress, data_long, type = 1) {
-  if (type == 1) {
-    b <- lapply_progress(
-      as.list(1:iterations),
-      function(x) {
-        if (identical(class(ip_object), "ip_score")) {
-          return(bootstrap_iteration(data, ip_object))
-        } else if ("ip_score_long" %in% class(ip_object)) {
-          return(bootstrap_iteration_long(
-            data_outcome = data, data_long = data_long, ip_object)
-          )
-        } else {
-          stop("unknown class ", class(ip_object), " found for bootstrapping")
-        }
-      },
-      "bootstrapping",
-      progress = progress
-    )
-  } else {
-    b <- lapply_progress(
-      as.list(1:iterations),
-      function(x) {
-        if (identical(class(ip_object), "ip_score")) {
-          return(bootstrap_iteration_2(ip_object))
-        } else if ("ip_score_long" %in% class(ip_object)) {
-          return(bootstrap_iteration_long(
-            data_outcome = data, data_long = data_long, ip_object)
-          )
-        } else {
-          stop("unknown class ", class(ip_object), " found for bootstrapping")
-        }
-      },
-      "bootstrapping",
-      progress = progress
-    )
-  }
+bootstrap <- function(ip_object, matchcall, call_env, iterations, progress, data_long) {
+  b <- lapply_progress(
+    as.list(1:iterations),
+    function(x) {
+      if (identical(class(ip_object), "ip_score")) {
+        return(bootstrap_iteration(ip_object, matchcall, call_env))
+      } else if ("ip_score_long" %in% class(ip_object)) {
+        return(bootstrap_iteration_long(
+          data_outcome = data, data_long = data_long, ip_object)
+        )
+      } else {
+        stop("unknown class ", class(ip_object), " found for bootstrapping")
+      }
+    },
+    "bootstrapping",
+    progress = progress
+  )
 
   # transpose results
   # (iteration > metric > model) -> (metric > model > iteration)

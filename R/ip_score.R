@@ -233,25 +233,12 @@ ip_score <- function(object, data, outcome, treatment_formula,
 
   # do bootstrap
   if (bootstrap > 0) {
-    set.seed(1)
+    matchcall <- match.call()
+    call_env <- parent.frame()
 
-    time1 <- Sys.time()
-    bs <- bootstrap(data, ip_object, bootstrap, bootstrap_progress)
-    time2 <- Sys.time()
+    bs <- bootstrap(ip_object, matchcall, call_env, bootstrap, bootstrap_progress)
     ip_object <- add_to_ip_object(ip_object, "bootstrap", bs, after = 1)
     ip_object <- add_to_ip_object(ip_object, "bootstrap_iterations", bootstrap)
-
-
-    set.seed(1)
-    the_call <- match.call()
-    ip_object <- add_to_ip_object(ip_object, "the_call", the_call)
-    time3 <- Sys.time()
-    bs2 <- bootstrap(data, ip_object, bootstrap, bootstrap_progress, type = 2)
-    time4 <- Sys.time()
-    ip_object <- add_to_ip_object(ip_object, "bootstrap2", bs2, after = 2)
-
-    cat("old method: ", time2 - time1, "\n")
-    cat("new method: ", time4 - time3, "\n")
   }
 
   ip_object <- add_to_ip_object(ip_object, "quiet", quiet)
