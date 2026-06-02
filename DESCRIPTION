@@ -40,7 +40,8 @@ LazyData: true
 Imports: 
     stats,
     survival,
-    prodlim
+    prodlim,
+    nnet
 Depends: 
     R (>= 3.5)
 URL: https://jvelumc.github.io/ipeval/, https://github.com/jvelumc/ipeval
@@ -50,7 +51,10 @@ Suggests:
     rmarkdown,
     testthat (>= 3.0.0),
     ipw,
-    riskRegression
+    riskRegression,
+    dplyr,
+    tidyr,
+    vdiffr
 Config/testthat/edition: 3
 VignetteBuilder: knitr
 Config/roxygen2/version: 8.0.0

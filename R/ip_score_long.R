@@ -1,12 +1,50 @@
-
-
-
+#' Convert wide longitudinal data to long format
+#'
+#' Reshapes repeated measurements stored in wide format into a long-format
+#' dataset with one row per subject per visit. Rows corresponding to visits
+#' occurring after the subject's outcome time are removed.
+#'
+#' @param df A data frame containing one row per subject.
+#' @param baseline_variables Character vector of baseline variables to retain
+#'   and repeat across visits. Must include `"id"`.
+#' @param wide_variables Named list mapping long-format variable names to the
+#'   corresponding wide-format column names for each visit.
+#' @param visit_times Numeric vector giving the visit times corresponding to the
+#'   repeated measurements in `wide_variables`.
+#' @param outcome_times Numeric vector of outcome or follow-up times, used to
+#'   remove visits occurring after a subject's observed follow-up.
+#'
+#' @returns A data frame in long format containing one row per subject per
+#'   observed visit, with columns `id`, `visit_time`, the specified baseline
+#'   variables, and the reshaped longitudinal variables.
+#'
 #' @export
+#'
+#' @examples
+#' data <- data.frame(
+#'   id = 1:3,
+#'   A0 = c(0, 1, 0),
+#'   A1 = c(1, NA, 0),
+#'   L0 = c(0.2, -1.1, 0.5),
+#'   L1 = c(0.8, NA, 0.1),
+#'   time = c(3, 1, 4)
+#' )
+#'
+#' wide_to_long(
+#'   df = data,
+#'   baseline_variables = "id",
+#'   wide_variables = list(
+#'     A = c("A0", "A1"),
+#'     L = c("L0", "L1")
+#'   ),
+#'   visit_times = c(0, 2),
+#'   outcome_times = data$time
+#' )
 wide_to_long <- function(df, baseline_variables = c("id"), wide_variables, visit_times,
                          outcome_times) {
   stopifnot("must have column 'id' for subject ids in df" = "id" %in% names(df))
   stopifnot("id must be unique in df" = nrow(df) == length(unique(df$id)))
-  long <- reshape(
+  long <- stats::reshape(
     data = df,
     varying = wide_variables,
     v.names = names(wide_variables),
@@ -38,10 +76,39 @@ lag_vec <- function(x, n = 1, fill = 0) {
   if (n >= nx) {
     return(rep(fill, nx))
   }
-  c(rep(fill, n), head(x, -n))
+  c(rep(fill, n), utils::head(x, -n))
 }
 
+#' Add lagged versions of a longitudinal variable
+#'
+#' Creates one or more lagged versions of a variable in long-format data. Lagged
+#' values are computed separately within each subject and added as new columns.
+#' The data must be sorted by id and visit time before calling this function.
+#'
+#' @param df A long-format data frame containing an `id` column identifying
+#'   subjects.
+#' @param var Character string giving the name of the variable to lag.
+#' @param lag Integer vector specifying the lag(s) to create.
+#' @param fill Value used when a lagged observation is unavailable (e.g. at the
+#'   first visit). Defaults to 0.
+#'
+#' @returns The input data frame with additional columns named
+#'   `(var)_lag_(lag)` containing the requested lagged values.
+#'
 #' @export
+#'
+#' @examples
+#' df <- data.frame(
+#'   id = c(1, 1, 1, 2, 2, 2),
+#'   visit_time = c(0, 1, 2, 0, 1, 2),
+#'   A = c(0, 1, 1, 1, 0, 0)
+#' )
+#'
+#' # Add a 1-visit lag of A
+#' add_lag_terms(df, "A")
+#'
+#' # Add both 1- and 2-visit lags
+#' add_lag_terms(df, "A", lag = c(1, 2))
 add_lag_terms <- function(df, var, lag = 1, fill = 0) {
   for (l in lag) {
     lag_name <- paste0(var, "_lag_", l)
@@ -172,7 +239,7 @@ add_lag_terms <- function(df, var, lag = 1, fill = 0) {
 #'   the assumptions required for valid inference.
 #'
 #' @export
-#'
+#' @seealso \code{\link{ip_score}}
 #' @references Keogh RH, Van Geloven N. Prediction Under Interventions:
 #'   Evaluation of Counterfactual Performance Using Longitudinal Observational
 #'   Data. Epidemiology. 2024;35(3):329-339.
@@ -420,12 +487,6 @@ construct_long_ip_object <- function(outcome, treatment, predictions, pseudopop,
   )
   class(ip_object) <- c("ip_score_long", "ip_score")
   ip_object
-}
-
-threshold_weights <- function(weights, quantile_bound) {
-  upper_bound <- quantile(weights, quantile_bound)[[1]]
-  weights[weights > upper_bound] <- upper_bound
-  return(weights)
 }
 
 get_iptw_long <- function(data_long, score_treatment, treatment_of_interest,

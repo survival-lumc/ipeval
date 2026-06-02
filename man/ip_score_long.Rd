@@ -233,3 +233,6 @@ Keogh RH, Van Geloven N. Prediction Under Interventions:
   Evaluation of Counterfactual Performance Using Longitudinal Observational
   Data. Epidemiology. 2024;35(3):329-339.
 }
+\seealso{
+\code{\link{ip_score}}
+}

@@ -11,7 +11,6 @@ cf_metric <- function(metric, ...) {
     "scaled_brier" = cf_brier_scaled(...),
     "auc" = cf_auc(...),
     "oeratio" = cf_oeratio(...),
-    "oeratio_pp" = cf_oeratio_pp(...),
     "calplot" = cf_calplot(...),
     stop("Performance metric ", metric, " not implemented")
   )
