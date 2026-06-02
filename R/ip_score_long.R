@@ -64,10 +64,7 @@ add_lag_terms <- function(df, var, lag = 1, fill = 0) {
 }
 
 
-# input:
-# - outcome_data (id, time, status)
-# - treatment/confounder data, long. Treatment formula needs to make sense here
-#   - add_lag function
+
 #' @param strip_ipt_models If set to TRUE (default), the models for the IPT
 #' and IPC-weights are stripped of unnecessary data. Set to FALSE if you plan
 #' to do extensive diagnostics on the fitted IPT/IPC models. The resulting
@@ -82,26 +79,61 @@ ip_score_long <- function(probabilities, data_outcome, data_long,
                           iptw, ipcw, quiet = FALSE,
                           strip_ipt_models = TRUE) {
 
+  # checking inputs...
+
+  check_missing(probabilities)
+  check_missing(data_outcome)
+  check_missing(data_long)
+  check_missing(treatment_formula)
+  check_missing(treatment_of_interest)
+  check_missing(visit_times)
+  check_missing(time_horizon)
+
+  stopifnot(
+    "data_outcome requires columns id, time, and status " =
+      all(c("id", "time", "status") %in% names(data_outcome))
+  )
+  stopifnot(
+    "data_long should have columns id and visit_time at least" =
+      all(c("id", "visit_time") %in% names(data_long))
+  )
+
+  if (cens_model == "KM")
+    stopifnot("censoring model must be ~ 1 if modeled via KM" =
+                rhs_is_one(cens_formula))
+
+  cens_model <- match.arg(cens_model, choices = c("cox", "KM"))
+
+  # do not allow bootstrap if iptw are given as fixed vector
+  is_bootstrap_allowed(bootstrap, iptw, ipcw)
+
+  stopifnot(length(unique(data_outcome$id)) == nrow(data_outcome))
+  stopifnot(length(unique(data_long$id)) == nrow(data_outcome))
+  stopifnot(!is.unsorted(data_long$id)) # triple negation... id must be sorted
+  stopifnot(!is.unsorted(data_outcome$id))
+
+  stopifnot(setequal(data_long$visit_time, visit_times))
+
+
   # assert:
-  # - probabilities and data outcome same length
-  # - data outcome has id, time, status
-  # - same ids in data outcome and data long
-  # - visit times as given should be consistent with visit_times in data_long
   # - visits may not be skipped (unless censored). I.e. all visits before
   #   survtime should be in data.
-  # disable bootstrap if iptw given as numeric
 
-  # we should make sure that ids in data_outcome and data_long have same ordering
-  # here
   n_visits <- length(visit_times)
   stopifnot("visit times must be ordered chronologically" =
               all(order(visit_times) == 1:n_visits))
   stopifnot("first visit time must be at t=0" = visit_times[0] == 0)
   stopifnot("last visit time must be before time horizon" =
               max(visit_times) < time_horizon)
-  stopifnot("id" %in% names(data_outcome))
-  stopifnot("id" %in% names(data_long))
 
+
+
+  max_visit_time <- tapply(data_long$visit_time, data_long$id, max)
+  stopifnot(
+    "there are subjects with visit time beyond their survival time" =
+      all(max_visit_time <=
+            data_outcome$time[match(names(max_visit_time), data_outcome$id)])
+  )
 
 
   if (is.character(treatment_of_interest) && treatment_of_interest == "always")
@@ -113,14 +145,16 @@ ip_score_long <- function(probabilities, data_outcome, data_long,
                                    substitute(survival::Surv(time, status)),
                                    time_horizon = time_horizon)
 
-  # treatment of interest in this function is not really important.
-  # we only require this for iptw.
+  # compute IPT weights. First get a temporary score_treatment_long, which
+  # is not used after this.
   score_treatment_long <- extract_treatment(data_long, treatment_formula, NA)
-
   score_ipt <- get_iptw_long(data_long, score_treatment_long,
                              treatment_of_interest, visit_times,
                              strip_ipt_models, iptw, data_outcome)
 
+  # build a dataframe with 1 row per subject, and whether they are compliant
+  # to longitudinal treatment strategy or not. Having early event/censor
+  # does not make you non-compliant as long as you are compliant before survtime
   data_flat <- data.frame(
     id = unique(data_long$id),
     ipt = score_ipt$weights,
@@ -129,25 +163,25 @@ ip_score_long <- function(probabilities, data_outcome, data_long,
   )
   names(data_flat)[3] <- as.character(treatment_formula[[2]])
 
+  # we simplified the problem from longitudinal treatment to single treatment
+  # (compliant or not). We can reuse a lot of code from ip_score() this way.
   score_treatment <- extract_treatment(data_flat, treatment_formula, TRUE)
-
   score_pseudopop <- get_pseudopop(score_outcome, score_treatment)
 
+  probabilities <- make_named_list(probabilities, substitute(probabilities))
+  score_predictions <- get_predictions(probabilities, data_flat)
 
+  # censoring weights is a bit more tedious, requiring the long data again.
   score_ipc <- get_ipcw_long(cens_formula, data_outcome, data_long,
                        cens_model, time_horizon, visit_times, strip_ipt_models,
                        ipcw)
-
-
-  probabilities <- make_named_list(probabilities, substitute(probabilities))
-
-  score_predictions <- get_predictions(probabilities, data_flat)
 
   if (null_model) {
     score_predictions <- fit_null(score_pseudopop, score_outcome,
                                   score_predictions, score_ipt, score_ipc)
   }
 
+  # Combines all the required elements into 1 object
   ip_object <- construct_long_ip_object(
     outcome = score_outcome,
     treatment = score_treatment,
@@ -157,6 +191,11 @@ ip_score_long <- function(probabilities, data_outcome, data_long,
     ipc = score_ipc,
     metrics = metrics
   )
+
+  # use the compute_metrics function to compute metrics. All longitudinal
+  # information is 'simplified' to a point treatment (compliance/non-compliance)
+  # and time dependent weights are combined into 1 weight.
+  # Thus, we do not require a special compute_metrics function for long trts.
   ip_object <- compute_metrics(ip_object)
 
   # do bootstrap

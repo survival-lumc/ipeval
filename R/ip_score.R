@@ -184,9 +184,7 @@ ip_score <- function(object, data, outcome, treatment_formula,
   object <- make_named_list(object, substitute(object))
 
   # do not allow bootstrap if iptw are given as fixed vector
-  if (bootstrap != 0 && !missing(iptw) && !is.function(iptw)) {
-    stop("can't bootstrap if iptw are given")
-  }
+  is_bootstrap_allowed(bootstrap, iptw, ipcw)
 
   # start gathering information required for the computation of metrics
   # in weighted pseudopop

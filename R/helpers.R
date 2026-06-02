@@ -1,3 +1,14 @@
+is_bootstrap_allowed <- function(bootstrap, iptw, ipcw) {
+  # do not allow bootstrap if iptw are given as fixed vector
+  if (bootstrap != 0 && !missing(iptw) && !is.function(iptw)) {
+    stop("can't bootstrap if iptw are given")
+  }
+
+  if (bootstrap != 0 && !missing(ipcw) && !is.function(ipcw)) {
+    stop("can't bootstrap if ipcw are given")
+  }
+}
+
 strip_glm <- function(fit) {
   fit[c(
     "residuals",
