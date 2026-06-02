@@ -1,11 +1,4 @@
-# assuming:
-# - temperal ordering: P, L0, A0, Y1, L1, A1, Y2, ...
-# - visit 0 is on time 0
-# - visit times are same for everyone
-# - visits are not necessarily equi-spaced?
-# - treatment before time 0 is 0.
-# - data_long has column 'id' indicating subject id's
-# - data_long had column 'visit_id' indicating visit id, starting from 0
+
 
 
 #' @export
@@ -63,13 +56,129 @@ add_lag_terms <- function(df, var, lag = 1, fill = 0) {
   return(df)
 }
 
-
-
-#' @param strip_ipt_models If set to TRUE (default), the models for the IPT
-#' and IPC-weights are stripped of unnecessary data. Set to FALSE if you plan
-#' to do extensive diagnostics on the fitted IPT/IPC models. The resulting
-#' `ip_score` object will use quite a lot more memory.
+#' Interventional prediction score for longitudinal treatment strategies
+#'
+#' Estimates the predictive performance of predictions under longitudinal
+#' interventions, by forming a weighted pseudopopulation in which every subject
+#' was assigned the longitudinal treatment strategy of interest.
+#'
+#' To form a pseudopopulation that represents a setting in which everybody was
+#' treated for all 5 visits, set `treatment_of_interest` to `c(1,1,1,1,1)`. Any
+#' pattern can be chosen, i.e. `c(1,0,1,0,1)` is also valid, as long as the
+#' number of visits is correct. Alternatively, one could also set this argument
+#' to "always" or "never" as a shortcut for `rep(1, n_visits)` or `rep(0,
+#' n_visits)`. Treatment strategies where only certain parts are set fixed are
+#' also possible via `NA`, i.e. use `c(1,1,NA, NA, NA)` when you want to form a
+#' pseudopopulation where everybody's first 2 treatment levels are set to 1, and
+#' their remaining 3 can be whatever they would have been. If treatment is
+#' categorical, this should be a character vector denoting the treatment levels
+#' of interest.
+#'
+#' Bootstrap is not possible when manually specifiying the IPTW/IPCW as numeric
+#' vectors. If specifying a function that computes the ITPW/IPCW given data, it
+#' is possible. The given function will be called on each bootstrapped dataset
+#' to compute the 95% CI of the performance metrics. More advanced techniques,
+#' such as thresholding extreme IP weights, can be implemented this way. The
+#' censoring weight returned should be the 1 / probability of remaining
+#' uncensored at the time horizon, or at their event time, whichever happens
+#' first.
+#'
+#' @param probabilities A numeric vector corresponding to risk estimates under
+#'   the treatment level of interest, or a (named) list of multiple numeric
+#'   vectors for validating and comparing multiple risk estimates.
+#' @param data_outcome A dataframe containing the survival outcomes. It must
+#'   consist of 1 row per subject, with columns 'id', 'time', and 'status'.
+#' @param data_long A dataframe in 'long' format, containing the time dependent
+#'   treatment variable, the time dependent confounders and other time dependent
+#'   covariates, possibly required for modeling the censoring mechanism.
+#'   Baseline covariates can also be included, in which case they would be
+#'   repeated for every visit. It is in 'long' format, i.e. each subject has one
+#'   row for each of their visits. Must have the columns 'id' and 'visit_time'.
+#'   There should not be any visits after a subject's survival time. Subject
+#'   should not skip any visit.
+#' @param treatment_formula A formula which identifies the treatment (left hand
+#'   side) and the confounders (right hand side) in data_long. E.g. A ~ L +
+#'   A_lag_1. The treatment can be either binary (0/1) or a categorical factor.
+#'   The confounders are used to estimate the inverse probability of treatment
+#'   weights (IPTW) model. The IPTW can also be specified themselves using the
+#'   iptw argument, in which case the right hand side of this formula is ignored
+#'   (the left hand side must still identify the treatment, i.e. A ~ 1).
+#' @param treatment_of_interest A treatment strategy for which the
+#'   interventional performance measures should be evaluated. Should be in the
+#'   form of a vector, with one element per visit. See details.
+#' @param metrics A character vector specifying which performance metrics to be
+#'   computed. Options are c("auc", "brier", "oeratio", "calplot").
+#' @param visit_times A numeric vector, indicating the times of the visits. The
+#'   first visit must always be at t = 0.
+#' @param time_horizon the prediction horizon of interest.
+#' @param cens_model Model for estimating inverse probability of censored
+#'   weights (IPCW). Methods currently implemented are Kaplan-Meier ("KM") or
+#'   Cox ("cox"), both applied to the censored times. KM is only supported when
+#'   the right hand side of cens_formula is 1.
+#' @param cens_formula Formula for which the r.h.s. determines the censoring
+#'   probabilities. Could consist of only baseline variables but also of
+#'   time-dependent variables. Either way, all variables specified must be
+#'   present in data_long
+#' @param null_model If TRUE fit a risk prediction model which ignores the
+#'   covariates and predicts the same value for all subjects. The model is
+#'   fitted using the data in which all subjects are 'counterfactually' assigned
+#'   the treatment of interest (using the IPTW, as estimated using the
+#'   treatment_formula or as given by the iptw argument). For time-to-event
+#'   outcomes, the subjects are also 'counterfactually' uncensored (using the
+#'   IPCW, as estimated using the cens_formula, or as given by the ipcw
+#'   argument).
+#' @param bootstrap If this is an integer greater than 0, this indicates the
+#'   number of bootstrap iterations, to compute 95\% confidence intervals around
+#'   the performance metrics.
+#' @param bootstrap_progress if set to TRUE, print a progress bar indicating the
+#'   progress of bootstrap procedure.
+#' @param iptw A numeric vector, containing the inverse probability of treatment
+#'   weights. These are normally computed using the treatment_formula, but they
+#'   can be specified directly via this argument. A function can also be
+#'   specified, which takes as input arguments 'data_outcome' and 'data_long'
+#'   and returns a numeric vector of the IPTW weight. See details.
+#' @param ipcw A numeric vector, containing the inverse probability of
+#'   censoring weights. These are normally computed using the cens_formula, but
+#'   they can be specified directly via this argument. A function can also be
+#'   specified, which takes as input arguments 'data_outcome' and 'data_long'
+#'   and returns a numeric vector of the IPCW weight. See details.
+#' @param quiet  If set to TRUE, don't print assumptions.
+#' @param strip_ipt_models If set to TRUE (default), the models for the IPT and
+#'   IPC-weights are stripped of unnecessary data. Set to FALSE if you plan to
+#'   do extensive diagnostics on the fitted IPT/IPC models. The resulting
+#'   `ip_score` object will use quite a lot more memory.
+#'
+#' @returns An object of class `ip_score`, for which the `print()` and `plot()`
+#' methods are implemented. The object is a nested list containing: \itemize{
+#'   \item `$score`, which contains the predictive performance in the
+#'   pseudopopulation.
+#'   \item `$bootstrap`, if applicable, the 95\% confidence intervals of the
+#'   performance metrics, and the performance metrics for each individual
+#'   bootstrap iteration.
+#'   \item `$outcome`, the observed outcome of the original dataset.
+#'   \item `$treatment`, the observed outcome of the original dataset.
+#'   \item `$predictions`, the predictions to be evaluated, i.e. the probability
+#'   of event for each patient, had their treatment been set to
+#'   treatment_of_interest.
+#'   \item `$ipt`, method, model and inverse probability of treatment weights
+#'   (IPTW). These are NA for patients that are not in the pseudopopulation.
+#'   \item `$ipc`, method, model and inverse probability of censoring weights
+#'   (IPCW). These are NA for patients that were censored.
+#'   \item `$pseudopop`, binary vector indicating which subjects of the original
+#'      population were in the pseudopopulation, by following the treatment
+#'      of interest and remaining uncensored.
+#'   }
+#'   The print method summarizes the results and if (quiet = FALSE), prints
+#'   the assumptions required for valid inference.
+#'
 #' @export
+#'
+#' @references Keogh RH, Van Geloven N. Prediction Under Interventions:
+#'   Evaluation of Counterfactual Performance Using Longitudinal Observational
+#'   Data. Epidemiology. 2024;35(3):329-339.
+#'
+#' @examples
+#'
 ip_score_long <- function(probabilities, data_outcome, data_long,
                           treatment_formula, treatment_of_interest,
                           metrics = c("auc", "brier", "oeratio", "calplot"),
@@ -109,7 +218,7 @@ ip_score_long <- function(probabilities, data_outcome, data_long,
 
   stopifnot(length(unique(data_outcome$id)) == nrow(data_outcome))
   stopifnot(length(unique(data_long$id)) == nrow(data_outcome))
-  stopifnot(!is.unsorted(data_long$id)) # triple negation... id must be sorted
+  stopifnot(!is.unsorted(data_long$id)) # triple negation: id must be sorted
   stopifnot(!is.unsorted(data_outcome$id))
 
   stopifnot(setequal(data_long$visit_time, visit_times))
@@ -145,23 +254,15 @@ ip_score_long <- function(probabilities, data_outcome, data_long,
                                    substitute(survival::Surv(time, status)),
                                    time_horizon = time_horizon)
 
-  # compute IPT weights. First get a temporary score_treatment_long, which
-  # is not used after this.
-  score_treatment_long <- extract_treatment(data_long, treatment_formula, NA)
-  score_ipt <- get_iptw_long(data_long, score_treatment_long,
-                             treatment_of_interest, visit_times,
-                             strip_ipt_models, iptw, data_outcome)
-
   # build a dataframe with 1 row per subject, and whether they are compliant
   # to longitudinal treatment strategy or not. Having early event/censor
   # does not make you non-compliant as long as you are compliant before survtime
   data_flat <- data.frame(
     id = unique(data_long$id),
-    ipt = score_ipt$weights,
     trt = faithful_to_trt(data_long, treatment_formula, treatment_of_interest,
                           visit_times)
   )
-  names(data_flat)[3] <- as.character(treatment_formula[[2]])
+  names(data_flat)[2] <- as.character(treatment_formula[[2]])
 
   # we simplified the problem from longitudinal treatment to single treatment
   # (compliant or not). We can reuse a lot of code from ip_score() this way.
@@ -171,7 +272,15 @@ ip_score_long <- function(probabilities, data_outcome, data_long,
   probabilities <- make_named_list(probabilities, substitute(probabilities))
   score_predictions <- get_predictions(probabilities, data_flat)
 
-  # censoring weights is a bit more tedious, requiring the long data again.
+  # compute IPT/IPC weights. This is done on the longitudinal data. Weights
+  # are combined as products to get 1 weight per patient, which represents
+  # the weight that a patient is compliant to treatment(in the data_flat sense).
+  # First get a temporary score_treatment_long, which is not used after this.
+  score_treatment_long <- extract_treatment(data_long, treatment_formula, NA)
+  score_ipt <- get_iptw_long(data_long, score_treatment_long,
+                             treatment_of_interest, visit_times,
+                             strip_ipt_models, iptw, data_outcome)
+
   score_ipc <- get_ipcw_long(cens_formula, data_outcome, data_long,
                        cens_model, time_horizon, visit_times, strip_ipt_models,
                        ipcw)

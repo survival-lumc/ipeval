@@ -8,7 +8,12 @@ observed_score(
   object,
   data,
   outcome,
-  metrics = c("auc", "brier", "oeratio", "calplot")
+  metrics = c("auc", "brier", "oeratio", "calplot"),
+  time_horizon,
+  cens_model = "KM",
+  cens_formula = ~1,
+  null_model = TRUE,
+  ipcw
 )
 }
 \arguments{
@@ -22,11 +27,34 @@ observed_score(
 
 \item{data}{A data.frame containing the observed outcome.}
 
-\item{outcome}{The outcome, to be evaluated within data. This should be
-the name of a numeric column in data.}
+\item{outcome}{The outcome, to be evaluated within data. This could either be
+the name of a numeric/logical column in data, or a Surv object for
+time-to-event data, e.g. Surv(time, status), if time and status are columns
+in data.}
 
 \item{metrics}{A character vector specifying which performance metrics to be
 computed. Options are c("auc", "brier", "oeratio", "calplot").}
+
+\item{time_horizon}{For time to event data, the prediction horizon of
+interest.}
+
+\item{cens_model}{Model for estimating inverse probability of censored
+weights (IPCW). Methods currently implemented are Kaplan-Meier ("KM") or
+Cox ("cox"), both applied to the censored times. KM is only supported when
+the right hand side of cens_formula is 1.}
+
+\item{cens_formula}{Formula for which the r.h.s. determines the censoring
+probabilities. I.e. ~ x1 + x2.}
+
+\item{null_model}{If TRUE fit a risk prediction model which ignores the
+covariates and predicts the same value for all subjects. For time-to-event
+outcomes, the subjects are 'counterfactually' uncensored (using the
+IPCW, as estimated using the cens_formula, or as given by the ipcw
+argument).}
+
+\item{ipcw}{A numeric vector, containing the inverse probability of censor
+weights. These are normally computed using the cens_formula, but they can
+be specified directly via this argument.}
 }
 \value{
 Performance metrics in the observed dataset.
@@ -35,8 +63,8 @@ Performance metrics in the observed dataset.
 This function computes the performance of the predictions in the given data,
 which may contain a mix of treated and untreated subjects. It exists only to
 demonstrate the difference between 'normal' performance and counterfactual
-performance. It is not user friendly and should not be relied on. It does not
-support time-to-event data.
+performance. It is not user friendly and should not be relied on. Consider
+using riskRegression::Score() as an alternative.
 }
 \examples{
 n <- 1000

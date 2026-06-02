@@ -2,7 +2,7 @@
 % Please edit documentation in R/ip_score.R
 \name{ip_score}
 \alias{ip_score}
-\title{Counterfactual validation score}
+\title{Interventional prediction score}
 \usage{
 ip_score(
   object,
@@ -20,7 +20,8 @@ ip_score(
   bootstrap_progress = TRUE,
   iptw,
   ipcw,
-  quiet = FALSE
+  quiet = FALSE,
+  strip_ipt_models = TRUE
 )
 }
 \arguments{
@@ -44,13 +45,14 @@ in data.}
 
 \item{treatment_formula}{A formula which identifies the treatment (left hand
 side) and the confounders (right hand side) in the data. E.g. A ~ L. The
+treatment can be either binary (0/1) or a categorical factor. The
 confounders are used to estimate the inverse probability of treatment
 weights (IPTW) model. The IPTW can also be specified themselves using the
-iptw argument, in which case the right hand side of this formula is
-ignored.}
+iptw argument, in which case the right hand side of this formula is ignored
+(the left hand side must still identify the treatment, i.e. A ~ 1).}
 
-\item{treatment_of_interest}{A treatment level for which the counterfactual
-perormance measures should be evaluated.}
+\item{treatment_of_interest}{A treatment level for which the interventional
+performance measures should be evaluated.}
 
 \item{metrics}{A character vector specifying which performance metrics to be
 computed. Options are c("auc", "brier", "oeratio", "calplot"). See details.}
@@ -68,14 +70,15 @@ probabilities. I.e. ~ x1 + x2.}
 
 \item{null_model}{If TRUE fit a risk prediction model which ignores the
 covariates and predicts the same value for all subjects. The model is
-fitted using the data in which all subjects are counterfactually assigned
+fitted using the data in which all subjects are 'counterfactually' assigned
 the treatment of interest (using the IPTW, as estimated using the
 treatment_formula or as given by the iptw argument). For time-to-event
-outcomes, the subjects are also counterfactually uncensored (using the
+outcomes, the subjects are also 'counterfactually' uncensored (using the
 IPCW, as estimated using the cens_formula, or as given by the ipcw
 argument).}
 
-\item{stable_iptw}{if TRUE, estimate stabilized IPT-weights. See details.}
+\item{stable_iptw}{if TRUE, estimate stabilized IPT-weights. Does not
+influence the metrics. See details.}
 
 \item{bootstrap}{If this is an integer greater than 0, this indicates the
 number of bootstrap iterations, to compute 95\% confidence intervals around
@@ -86,38 +89,46 @@ progress of bootstrap procedure.}
 
 \item{iptw}{A numeric vector, containing the inverse probability of treatment
 weights. These are normally computed using the treatment_formula, but they
-can be specified directly via this argument. If specified via this
-argument, bootstrap is not possible.}
+can be specified directly via this argument. A function can also be specified,
+which takes as input 'data' and returns a numeric vector of IPTW weights.
+See details.}
 
-\item{ipcw}{A numeric vector, containing the inverse probability of censor
-weights. These are normally computed using the cens_formula, but they can
-be specified directly via this argument. If specified via this argument,
-bootstrap is not possible.}
+\item{ipcw}{A numeric vector, containing the inverse probability of censoring
+weights. These are normally computed using the cens_formula, but they
+can be specified directly via this argument. A function can also be specified,
+which takes as input 'data' and returns a numeric vector of IPCW weights.
+See details.}
 
 \item{quiet}{If set to TRUE, don't print assumptions.}
+
+\item{strip_ipt_models}{If set to TRUE (default), the models for the IPT and
+IPC-weights are stripped of unnecessary data. Set to FALSE if you plan to
+do extensive diagnostics on the fitted IPT/IPC models. The resulting
+`ip_score` object will use quite a lot more memory.}
 }
 \value{
 An object of class `ip_score`, for which the `print()` and `plot()`
 methods are implemented. The object is a nested list containing: \itemize{
-  \item `$score`, which contains the predictive performance in the 'counterfactual'
-  dataset.
+  \item `$score`, which contains the predictive performance in the
+  pseudopopulation dataset.
+  \item `$bootstrap`, if applicable, the 95\% confidence intervals of the
+  performance metrics, and the performance metrics for each individual
+  bootstrap iteration.
   \item `$outcome`, the observed outcome of the original dataset.
   \item `$treatment`, the observed outcome of the original dataset.
   \item `$predictions`, the predictions to be evaluated, i.e. the probability
   of event for each patient, had their treatment been set to
-  treatment_of_interest
+  treatment_of_interest.
   \item `$ipt`, method, model and inverse probability of treatment weights
   (IPTW). These are NA for patients that are not in the pseudopopulation.
-  \item `$ipc`, method, model and inverse probability of censoring weights (IPCW).
-     these are NA for patients that were censored.
-  \item `$correct_trt`, binary vector indicating which subjects of the original
-     population followed the treatment of interest.
-  \item `$uncensored`, binary vector indicating which subjects of the original
-     population were uncensored, if applicable.
+  \item `$ipc`, method, model and inverse probability of censoring weights
+  (IPCW). These are NA for patients that were censored.
   \item `$pseudopop`, binary vector indicating which subjects of the original
-     population were in the pseudopopulation. Equal to
-     `$correct_trt & $uncensored`.
+     population were in the pseudopopulation, by following the treatment
+     of interest and remaining uncensored, if applicable.
   }
+  The print method summarizes the results and if (quiet = FALSE), prints
+  the assumptions required for valid inference.
 }
 \description{
 Estimates the predictive performance of predictions under interventions, by
@@ -141,9 +152,9 @@ sum(predictions_i - outcome_i)^2}. Scaled brier score is also available
 (observed) is the weighted fraction of events in the pseudopopulation, and
 the denominator (expected) is the unweighted mean of risk estimates of the
 original unweighted population. The \code{calplot} option generates a
-calibration plot, with default 8 knots. More/less knots can be specified by
-appending calplot with a number indicating the number of knots, e.g.
-\code{metrics = calplot10} for 10 knots.
+calibration plot, with default 8 subgroups. More/less subgroups can be
+specified by appending calplot with a number indicating the number of
+subgroups, e.g. \code{metrics = calplot10} for 10 subgroups.
 
 For the null model, the O/E ratio and the scaled Brier score, the mean
 predicted risk under the treatment of interest is required. This is computed
@@ -154,7 +165,19 @@ computationally a lot slower. Both methods are valid.
 
 Stabilized IPT-weigths are computed by estimating a null model for treatment.
 E.g. weights are \code{P(A = a) / P(A = a | L = l)}, if the given
-treatment_formula is \code{A ~ L}.
+treatment_formula is \code{A ~ L}. In a pseudopopulation in which
+everybody's treatment was set to a certain level `a`, the numerator of this
+expression is constant. The resulting performance metrics are not influenced
+by multiplication of weights with a constant.
+
+Bootstrap is not possible when manually specifiying the IPTW/IPCW as numeric
+vectors. If specifying a function that computes the ITPW/IPCW given data, it
+is possible. The given function will be called on each bootstrapped dataset
+to compute the 95\% CI of the performance metrics. More advanced techniques,
+such as thresholding extreme IP weights, can be implemented this way. The
+censoring weight returned should be the 1 / probability of remaining
+uncensored at the time horizon, or at their event time, whichever happens
+first.
 }
 \examples{
 n <- 1000
