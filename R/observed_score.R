@@ -88,8 +88,7 @@ observed_score <- function(object, data, outcome,
   observed_score$treatment <- NULL
   observed_score$pseudopop <- NULL
   observed_score$ipt <- NULL
-  observed_score$quiet <- NULL
-  class(observed_score) <- NULL
+  observed_score$quiet <- TRUE
 
   return(observed_score)
 }

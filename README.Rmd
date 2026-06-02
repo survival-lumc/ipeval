@@ -140,7 +140,7 @@ observed_score(
   data = df_val, 
   outcome = Y,
   metrics = c("auc", "brier", "oeratio")
-)$score
+)
 ```
 
 Note that the naive model now appears to outperform the causal model. These performance measures represent the performance of the models under the treatment assignment strategy present in the validation data. These performance estimates are a mixture of performance of the estimated risk under treatment of patients that were treated, and the estimated risk under no treatment of patients that were not treated. It does not assess the performance of risks under treatment of patients that were not treated and vice versa. If these models were to be used for decision-making, the treatment assignment mechanism would change, and these performance estimates would no longer be relevant. For this reason, the predictive performance under interventions should be estimated, using ```ip_score()```. 

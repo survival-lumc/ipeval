@@ -266,18 +266,13 @@ observed_score(
   data = df_val, 
   outcome = Y,
   metrics = c("auc", "brier", "oeratio")
-)$score
-#> $auc
-#>   null model       random  naive model causal model 
-#>    0.5000000    0.5046937    0.7639488    0.7408518 
+)
 #> 
-#> $brier
-#>   null model       random  naive model causal model 
-#>    0.2499942    0.3309954    0.1978048    0.2073964 
-#> 
-#> $oeratio
-#>   null model       random  naive model causal model 
-#>    1.0000000    1.0103746    0.9979931    1.0010368
+#>         model   auc brier oeratio
+#>    null model 0.500 0.250   1.000
+#>        random 0.505 0.331   1.010
+#>   naive model 0.764 0.198   0.998
+#>  causal model 0.741 0.207   1.001
 ```
 
 Note that the naive model now appears to outperform the causal model.

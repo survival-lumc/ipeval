@@ -40,6 +40,16 @@ plot.ip_score <- function(x, ...) {
   # this plotting function should ideally be more customizable,
   # i.e. show/hide legend, colors, xlim, ylim, ....
 
+  if (pretty_trt(x$treatment$treatment_of_interest) != "") {
+    caption <- paste0("Calibration had everyone followed treatment ",
+                      pretty_trt(x$treatment$treatment_of_interest))
+  } else {
+    caption <- "Calibration"
+    # for observed_score()
+  }
+
+
+
   models <- names(x$predictions)
 
   plot(1, type = "n",
@@ -47,8 +57,7 @@ plot.ip_score <- function(x, ...) {
        asp = 1,
        xlab = "Predicted", ylab = "Observed")
   graphics::title(
-    main = paste0("Calibration had everyone followed treatment ",
-                  pretty_trt(x$treatment$treatment_of_interest)),
+    main = caption,
     col.sub = "#404040",
     cex.sub = 0.8
   )
@@ -82,8 +91,7 @@ plot.ip_score <- function(x, ...) {
            asp = 1)
       graphics::title(
         main = paste0("Calibration plot for ", m),
-        sub = paste0("Calibration had everyone followed treatment ",
-                     pretty_trt(x$treatment$treatment_of_interest)),
+        sub = caption,
         col.sub = "#404040",
         cex.sub = 0.8
       )
@@ -295,9 +303,10 @@ print_km <- function(km, time_horizon) {
 }
 
 pretty_trt <- function(trt_of_interest) {
-  if (length(trt_of_interest) == 1) {
+  n <- length(trt_of_interest)
+  if (n == 1) {
     return(trt_of_interest)
-  } else {
+  } else if (n > 1) {
     return(
       paste0("{",
       paste0(
@@ -308,5 +317,7 @@ pretty_trt <- function(trt_of_interest) {
         collapse = ", "
       ), "}")
     )
+  } else {
+    return("")
   }
 }
