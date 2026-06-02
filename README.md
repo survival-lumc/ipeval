@@ -167,15 +167,33 @@ ip_score(
   treatment_of_interest = 0
 )
 #> Estimation of the performance of the prediction model in a
-#>  counterfactual (CF) dataset where everyone's treatment A was set to 0.
+#>  pseudopopulation where everyone's treatment A was set to 0.
+#> The pseudopopulation ($pseudopop) is constructed from 2561 (51.2%)
+#>  subjects who indeed received treatment level 0. These subjects are
+#>  reweighted to represent the full target population under a hypothetical
+#>  intervention in which everyone received this treatment level.
 #> The following assumptions must be satisfied for correct inference:
-#> - Conditional exchangeability requires that the inverse probability of
-#>  treatment weights are sufficient to adjust for confounding between
-#>  treatment and outcome.
-#> - Conditional positivity (assess $ipt$weights for outliers)
-#> - Consistency (including no interference)
+#> 
+#> Causal assumptions:
+#> 
+#> - Conditional exchangeability: after adjustment for the covariates used
+#>  to construct the inverse probability of treatment weights (IPTW), i.e.,
+#>  {L}, there are no unmeasured confounders of treatment assignment and
+#>  outcome.
+#> - Conditional positivity: the probability of receiving treatment level
+#>  0 should be greated than zero for each combination of the variables {L}
+#>  that is observed in the full population. The distribution of
+#>  IPT-weights can be assessed with $ipt$weights[$pseudopop$ids].
+#> - Consistency: the observed outcome under the received treatment equals
+#>  the potential outcome under that treatment. This includes the
+#>  assumption of no interference between subjects.
+#> 
+#> Modeling assumptions:
+#> 
 #> - Correctly specified propensity model. Estimated treatment model is
-#>  logit(A) = -0.07 + 2.05*L. See also $ipt$model
+#> logit(A) = -0.07 + 2.05*L. See also $ipt$model.
+#> 
+#> Performance estimates:
 #> 
 #>         model   auc brier oeratio
 #>    null model 0.500 0.245    1.00
@@ -184,7 +202,7 @@ ip_score(
 #>  causal model 0.766 0.196    1.00
 ```
 
-<img src="man/figures/README-unnamed-chunk-7-1.png" width="100%" />
+<img src="man/figures/README-unnamed-chunk-7-1.png" alt="" width="100%" />
 
 And similarly, we can assess performance if everybody had been treated:
 
@@ -209,7 +227,7 @@ ip_score(
 #>  causal model 0.739 0.202   0.930
 ```
 
-<img src="man/figures/README-unnamed-chunk-8-1.png" width="100%" />
+<img src="man/figures/README-unnamed-chunk-8-1.png" alt="" width="100%" />
 
 The causal model has better calibration and Brier score compared to the
 naive model under both treatment settings. Note that the AUC of the
@@ -248,12 +266,18 @@ observed_score(
   data = df_val, 
   outcome = Y,
   metrics = c("auc", "brier", "oeratio")
-)
+)$score
+#> $auc
+#>   null model       random  naive model causal model 
+#>    0.5000000    0.5046937    0.7639488    0.7408518 
 #> 
-#>         model   auc brier oeratio
-#>        random 0.505 0.331   1.010
-#>   naive model 0.764 0.198   0.998
-#>  causal model 0.741 0.207   1.001
+#> $brier
+#>   null model       random  naive model causal model 
+#>    0.2499942    0.3309954    0.1978048    0.2073964 
+#> 
+#> $oeratio
+#>   null model       random  naive model causal model 
+#>    1.0000000    1.0103746    0.9979931    1.0010368
 ```
 
 Note that the naive model now appears to outperform the causal model.
