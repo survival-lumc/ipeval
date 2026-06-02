@@ -464,6 +464,94 @@ test_that("treatment of interest patterns with NA", {
 
 })
 
+test_that("ip_score_long with manual specification of iptw/ipcw", {
+
+  df_dev <- generate_long_data_cox(1000, seed = 2)
+  df_dev_long <- make_dev_long(df_dev)
+  iptw <- ipt_weights(df_dev_long, A ~ L * A_lag_1)$weights
+  coxmsm <- fit_long_cox_model(data_long = df_dev_long, iptw)
+
+  # simulate validation datasets, with noninformative censoring
+  n <- 10000
+  df_val <- generate_long_data_cox(n, seed = 3, nonadministrative_censoring = TRUE)
+
+  # estimate risks using coxmsm model.
+  risk_0 <- risk_under_0(coxmsm, 5, df_val$L0)
+  risk_1 <- risk_under_1(coxmsm, 5, df_val$L0)
+  models <- list(risk_0, risk_1)
+
+  # prepare dataset for validation function
+  df_val_outcome <- df_val[, c("id", "time", "status")]
+  df_val_long <- wide_to_long(
+    df_val, "id", list(A = paste0("A", 0:4), L = paste0("L", 0:4)),
+    0:4, df_val$time)
+
+  df_val_long <- add_lag_terms(df_val_long, "A")
+
+  # evaluate performance under never treated strategy, compare against
+  # 'counterfactual' truth. tell ip_score_long to use KM to estimate IPCW
+
+  score0 <- ip_score_long(
+    probabilities = models,
+    data_outcome = df_val_outcome,
+    data_long = df_val_long,
+    visit_times = 0:4,
+    time_horizon = 5,
+    treatment_formula = A ~ (A_lag_1 * L),
+    treatment_of_interest = "never"
+  )
+
+  score_manualiptw <- ip_score_long(
+    probabilities = models,
+    data_outcome = df_val_outcome,
+    data_long = df_val_long,
+    visit_times = 0:4,
+    time_horizon = 5,
+    treatment_formula = A ~ (A_lag_1 * L),
+    treatment_of_interest = "never",
+    iptw = score0$ipt$weights
+  )
+  score_manualiptwipcw <- ip_score_long(
+    probabilities = models,
+    data_outcome = df_val_outcome,
+    data_long = df_val_long,
+    visit_times = 0:4,
+    time_horizon = 5,
+    treatment_formula = A ~ (A_lag_1 * L),
+    treatment_of_interest = "never",
+    iptw = score0$ipt$weights,
+    ipcw = score0$ipc$weights
+  )
+
+  expect_equal(score0$score, score_manualiptw$score)
+  expect_equal(score0$score, score_manualiptwipcw$score)
+
+  my_iptw_function <- function(data_outcome, data_long) {
+    w <- ipt_weights(
+      data = data_long,
+      propensity_formula = A ~ (A_lag_1 * L)
+    )$weights
+
+    as.vector(tapply(
+      w, data_long$id, FUN = prod
+    ))
+  }
+
+  score_functioniptw <- ip_score_long(
+    probabilities = models,
+    data_outcome = df_val_outcome,
+    data_long = df_val_long,
+    visit_times = 0:4,
+    time_horizon = 5,
+    treatment_formula = A ~ (A_lag_1 * L),
+    treatment_of_interest = "never",
+    iptw = my_iptw_function
+  )
+  expect_equal(score0$score, score_functioniptw$score)
+
+
+})
+
 test_that("ipscore long results vs validation under interventions paper", {
   # Using the code of Keogh, van geloven (2024) to compare our implementations
   # https://github.com/survival-lumc/Validation_Under_Interventions

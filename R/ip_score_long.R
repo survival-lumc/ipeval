@@ -78,7 +78,8 @@ ip_score_long <- function(probabilities, data_outcome, data_long,
                           metrics = c("auc", "brier", "oeratio", "calplot"),
                           visit_times, time_horizon, cens_model = "KM",
                           cens_formula = ~ 1, null_model = TRUE,
-                          bootstrap = 0, bootstrap_progress = TRUE, quiet = FALSE,
+                          bootstrap = 0, bootstrap_progress = TRUE,
+                          iptw, ipcw, quiet = FALSE,
                           strip_ipt_models = TRUE) {
 
   # assert:
@@ -88,6 +89,7 @@ ip_score_long <- function(probabilities, data_outcome, data_long,
   # - visit times as given should be consistent with visit_times in data_long
   # - visits may not be skipped (unless censored). I.e. all visits before
   #   survtime should be in data.
+  # disable bootstrap if iptw given as numeric
 
   # we should make sure that ids in data_outcome and data_long have same ordering
   # here
@@ -117,7 +119,7 @@ ip_score_long <- function(probabilities, data_outcome, data_long,
 
   score_ipt <- get_iptw_long(data_long, score_treatment_long,
                              treatment_of_interest, visit_times,
-                             strip_ipt_models)
+                             strip_ipt_models, iptw, data_outcome)
 
   data_flat <- data.frame(
     id = unique(data_long$id),
@@ -133,7 +135,8 @@ ip_score_long <- function(probabilities, data_outcome, data_long,
 
 
   score_ipc <- get_ipcw_long(cens_formula, data_outcome, data_long,
-                       cens_model, time_horizon, visit_times,strip_ipt_models)
+                       cens_model, time_horizon, visit_times, strip_ipt_models,
+                       ipcw)
 
 
   probabilities <- make_named_list(probabilities, substitute(probabilities))
@@ -210,10 +213,20 @@ threshold_weights <- function(weights, quantile_bound) {
 }
 
 get_iptw_long <- function(data_long, score_treatment, treatment_of_interest,
-                          visit_times, strip_model = TRUE) {
+                          visit_times, strip_model = TRUE, iptw, data_outcome) {
+
+  # if user specified weights themselves:
+  if (!missing(iptw)) {
+    ipt <- list()
+    manualiptw <- handle_specified_ip_long(iptw, data_outcome, data_long)
+    ipt$method <- manualiptw$method
+    ipt$weights <- manualiptw$ipw
+    return(ipt)
+  }
+  # if not:
 
   ipt_visit <- get_iptw(data_long, score_treatment, stable_iptw = FALSE,
-                       only_weights = FALSE, strip_model = strip_model)
+                        only_weights = FALSE, strip_model = strip_model)
 
   # set NA when deviating from trt of interest, and set 1 when trt of interest
   # is NA.
@@ -244,7 +257,17 @@ get_iptw_long <- function(data_long, score_treatment, treatment_of_interest,
 
 get_ipcw_long <- function(cens_formula, data_outcome, data_long,
                           cens_model, time_horizon, visit_times,
-                          strip_ipt_models = TRUE) {
+                          strip_ipt_models = TRUE, ipcw) {
+
+  # if user specified weights themselves:
+  if (!missing(ipcw)) {
+    ipc <- list()
+    manualipcw <- handle_specified_ip_long(ipcw, data_outcome, data_long)
+    ipc$method <- manualipcw$method
+    ipc$weights <- manualipcw$ipw
+    return(ipc)
+  }
+
   if (cens_model == "KM") {
     # for KM, we can use data_outcome
     ipc <- get_ipcw(Surv(time, status) ~ 1, data_outcome,
@@ -307,4 +330,35 @@ get_ipcw_long <- function(cens_formula, data_outcome, data_long,
     print("censoring model not implemented")
   }
   return(ipc)
+}
+
+
+handle_specified_ip_long <- function(iptcw, data_outcome, data_long, type = "iptw") {
+  # if the user specified something in the iptw/ipcw argument, e.g. a vector of
+  # weights or a function:
+  if (is.vector(iptcw, mode = "numeric")) {
+
+    method <- "weights manually specified"
+    ipw <- iptcw
+  } else if (is.function(iptcw)) {
+
+    method <- "weights specified via function"
+
+    ipw <- do.call(iptcw, args = list("data_outcome" = data_outcome,
+                                      "data_long" = data_long))
+
+    if ( ! (is.vector(ipw, mode = "numeric") && length(ipw) == nrow(data_outcome))) {
+
+      stop("function specified in ", type, " did not return a numeric vector ",
+           "of length data_outcome")
+    }
+  } else {
+
+    stop("argument ", type, " must be missing, a numeric vector of weights, ",
+         "or a function.")
+
+  }
+
+  return(list("method" = method, "ipw" = ipw))
+
 }

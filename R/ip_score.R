@@ -527,7 +527,7 @@ get_ipcw <- function(cens_formula, data, cens_model, time_horizon,
 
   # if user specified weights themselves:
   if (!missing(ipcw)) {
-    manualiptw <- handle_specified_ip(ipcw, data)
+    manualiptw <- handle_specified_ip(ipcw, data, type = "ipcw")
     ipc$method <- manualiptw$method
     ipcw <- manualiptw$ipw
   } else {
