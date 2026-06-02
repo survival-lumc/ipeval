@@ -457,6 +457,12 @@ extract_outcome <- function(data, outcome, time_horizon) {
     if (!all(event %in% c(0, 1))) {
       stop("Event indicator must be binary (0/1)", call. = FALSE)
     }
+
+    if (all(time < time_horizon)) {
+      stop("There are no subjects with survival time longer than time_horizon",
+           call. = FALSE)
+    }
+
   } else {
     if (!all(y %in% c(0, 1))) {
       stop("Outcome must be binary (0/1)", call. = FALSE)
