@@ -1,0 +1,292 @@
+---
+title: "Longitudinal treatments and time dependent confounding"
+output: rmarkdown::html_vignette
+vignette: >
+%\VignetteIndexEntry{Longitudinal treatments and time dependent confounding}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+  ---
+  
+```{r, include = FALSE}
+  knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+  )
+```
+  
+```{r setup}
+  library(ipeval)
+  library(survival)
+```
+
+This vignette demonstrates package functionality for longitudinal treatment strategies in the presence of time-dependent confounding. And workflow required for validation.
+
+For more detail, read [Keogh and Van Geloven (2024)](https://doi.org/10.1097/EDE.0000000000001713), from which the methods in this package are implemented.
+
+![](dag-timedep.png)
+
+## Data
+We first simulate data as in Figure 1, with 5 visits, time dependent confounder $L$ and treatment A. For development and validation. 
+
+```{r}
+
+simulate_longitudinal_data <- function(n, n_visits = 5, visit_times = 0:4, seed) {
+  set.seed(seed)
+  
+  L <- matrix(nrow = n, ncol = n_visits)
+  A <- matrix(nrow = n, ncol = n_visits)
+  U <- runif(n)
+  time <- rep(NA, n)
+  status <- rep(NA, n)
+  
+  for (i in 1:n_visits) {
+    
+    # simulate A, L, even if a patient already has had an event (and therefore
+    # misses subsequent visits). These are set to NA later.
+    
+    L[, i] <- if (i == 1) {
+      rnorm(n, U, 1)
+    } else {
+      rnorm(n, U + 0.8 * L[, i - 1] - A[, i - 1] + 0.1 * (i-1))
+    }
+    
+    A[, i] <- if (i == 1) {
+      rbinom(n, 1, plogis(-0.5 + 0.5 * L[, i]))
+    } else {
+      rbinom(n, 1, plogis(-0.5 + 0.5 * L[, i] + 0.8 * A[, i - 1]))
+    }
+      
+      
+    
+    # To simulate survival times with these time varying variables, we simulate a
+    # survival time at the first visit, using the corresponding values of A and L
+    # at that visit. If subject survived until after the next visit, we simulate
+    # another survival time, this time using the new values of A and L, etc until
+    # there is an event before the next visit. After the last visit, we just take
+    # the last simulated survival time. This is OK because of the memoryless
+    # property from the exponential distribution.
+    new_event_time <- rexp(n, exp(-2 + -0.5 * A[, i] + 0.5 * L[, i] + 0.5 * U))
+    new_censor_time <- rexp(n, exp(-3 + 0.2 * L[,i]))
+    
+    if (i != n_visits) {
+      time_until_next_visit <- visit_times[i+1] - visit_times[i]
+    } else {
+      time_until_next_visit <- Inf
+    }
+    
+    new_time <- pmin(new_event_time, new_censor_time)
+    new_status <- new_event_time < new_censor_time
+    
+    # if there was an event before the next visit, use that, if not, time and
+    # status are kept at NA and are given another chance next iteration
+    status <- ifelse(
+      is.na(status) & new_time < time_until_next_visit,
+      new_status,
+      status
+    )
+    time <- ifelse(
+      is.na(time) & new_time < time_until_next_visit,
+      visit_times[i] + new_time,
+      time
+    )
+  }
+  
+  # wipe A and L values after events (no visit after event)
+  for (i in 1:n_visits) {
+    A[, i] <- ifelse(time < visit_times[i], rep(NA, n), A[, i])
+    L[, i] <- ifelse(time < visit_times[i], rep(NA, n), L[, i])
+  }
+  
+  colnames(A) <- paste0("A", 0:(n_visits - 1))
+  colnames(L) <- paste0("L", 0:(n_visits - 1))
+  
+  data.frame(id = 1:n, time, status, A, L, U)
+}
+
+df_dev <- simulate_longitudinal_data(10000, seed = 1)
+df_val <- simulate_longitudinal_data(20000, seed = 2)
+head(df_dev)
+```
+
+Now, we need to have a model to validate. We fit a time dependent cox model. First we do some more data processing, using convenience functions `wide_to_long()` and 
+`add_lag_terms()` which are included in the package, as they are often also needed for the validation.
+
+```{r}
+df_dev_long <- wide_to_long(
+    df_dev,
+    baseline_variables = c("id", "time", "status", "L0", "U"),
+    wide_variables = list(A = paste0("A", 0:4),
+                          L = paste0("L", 0:4)),
+    visit_times = 0:4,
+    outcome_times = df_dev$time
+)
+
+df_dev_long$time_start <- df_dev_long$visit_time
+df_dev_long$time_end <- pmin(df_dev_long$visit_time + 1, df_dev_long$time)
+df_dev_long$status <- ifelse(
+  df_dev_long$time_end == df_dev_long$time,
+  df_dev_long$status,
+  0
+)
+df_dev_long$time <- NULL
+
+df_dev_long <- add_lag_terms(df_dev_long, "A", 1:4)
+head(df_dev_long)
+```
+Fitting a Cox model, one taking into account time dependent confounding with IPTW weights, and one not taking those into account:
+
+```{r}
+iptw_model <- glm(A ~ L + A_lag_1, family = "binomial", data = df_dev_long)
+print(iptw_model)
+
+iptw_propensity <- predict(iptw_model, type = "response")
+iptw_prob_trt <- ifelse(
+    df_dev_long$A == 1,
+    iptw_propensity,
+    1 - iptw_propensity
+  )
+df_dev_long$iptw <- 1 / iptw_prob_trt
+
+cox_msm <- coxph(
+  formula = Surv(time_start, time_end, status) ~ A + A_lag_1 + A_lag_2 + A_lag_3 + A_lag_4 + L0,
+  data = df_dev_long,
+  weights = iptw,
+  model = TRUE
+)
+
+print(cox_msm)
+
+cox_unweighted <- coxph(
+  formula = Surv(time_start, time_end, status) ~ A + A_lag_1 + A_lag_2 + A_lag_3 + A_lag_4 + L0,
+  data = df_dev_long,
+  model = TRUE
+)
+
+print(cox_unweighted)
+```
+
+Now that we have these models, we want to estimate the probability of a subject in our validation dataset getting the outcome, if we were to always treat them, and never treat them. 
+
+For this, its complicated, time dependent cox, we count the cumulative hazards between each visit... We build 2 data.frames, one for each treatment strategy of interest.
+
+Temporary:
+```{r}
+risk_under_0 <- function(cox_msm, t, L0) {
+  cumhaz <- survival::basehaz(cox_msm, centered = FALSE)$hazard
+  event.times <- survival::basehaz(cox_msm, centered = FALSE)$time
+  cumhaz.fun <- stepfun(event.times, c(0, cumhaz))
+
+  # hazard rate term
+  hrt <- function(variable, value) {
+    exp(coef(cox_msm)[variable]*value)
+  }
+
+  # # risk under never treated
+  risk0 <- function(t, L0) {
+    1 - exp(-cumhaz.fun(t)*hrt("L0", L0))
+  }
+
+  return(risk0(t, L0))
+}
+
+risk_under_1 <- function(cox_msm, t, L0) {
+  cumhaz <- survival::basehaz(cox_msm, centered = FALSE)$hazard
+  event.times <- survival::basehaz(cox_msm, centered = FALSE)$time
+  cumhaz.fun <- stepfun(event.times, c(0, cumhaz))
+
+  # hazard rate term
+  hrt <- function(variable, value) {
+    exp(coef(cox_msm)[variable]*value)
+  }
+
+  # # risk under always treated
+  risk1 <- function(t, L0) {
+    1 - exp(-(
+      cumhaz.fun(min(t, 1))*
+        hrt("L0", L0)*hrt("A", 1) +
+
+        (t >= 1) *
+        (cumhaz.fun(min(t, 2)) - cumhaz.fun(1))*
+        hrt("L0", L0)*hrt("A", 1)*hrt("A_lag_1", 1) +
+
+        (t >= 2) *
+        (cumhaz.fun(min(t, 3)) - cumhaz.fun(2))*
+        hrt("L0", L0)*hrt("A", 1)*hrt("A_lag_1", 1)*hrt("A_lag_2", 1) +
+
+        (t >= 3) *
+        (cumhaz.fun(min(t, 4)) - cumhaz.fun(3))*
+        hrt("L0", L0)*hrt("A", 1)*hrt("A_lag_1", 1)*hrt("A_lag_2", 1)*hrt("A_lag_3", 1) +
+
+        (t >= 4) *
+        (cumhaz.fun(min(t, 5)) - cumhaz.fun(4))*
+        hrt("L0", L0)*hrt("A", 1)*hrt("A_lag_1", 1)*hrt("A_lag_2", 1)*
+        hrt("A_lag_3", 1)*hrt("A_lag_4", 1)
+    ))
+  }
+  return(risk1(t, L0))
+
+}
+```
+
+```{r}
+msm_pred_under_0 <- risk_under_0(cox_msm, 5, df_val$L0)
+naive_pred_under_0 <- risk_under_0(cox_unweighted, 5, df_val$L0)
+
+msm_pred_under_1 <- risk_under_1(cox_msm, 5, df_val$L0)
+naive_pred_under_1 <- risk_under_1(cox_unweighted, 5, df_val$L0)
+
+summary(msm_pred_under_0)
+summary(msm_pred_under_1)
+
+summary(naive_pred_under_0)
+summary(naive_pred_under_1)
+```
+
+We can now almost validate these predictions under interventions.
+
+```{r}
+df_val_outcome <- df_val[, c("id", "time", "status")]
+df_val_long <- wide_to_long(df_val, baseline_variables = c("id"), 
+                            wide_variables = list("A" = paste0("A", 0:4),
+                                                  "L" = paste0("L", 0:4)),
+                            visit_times = 0:4, outcome_times = df_val$time)
+df_val_long <- add_lag_terms(df_val_long, "A")
+head(df_val_long)
+```
+
+Estimating censoring with KM: 
+```{r}
+ip_score_long(
+  probabilities = list(msm_pred_under_0, naive_pred_under_0),
+  data_outcome = df_val_outcome,
+  data_long = df_val_long,
+  treatment_formula = A ~ A_lag_1 + L,
+  treatment_of_interest = "never",
+  visit_times = 0:4, 
+  time_horizon = 5 
+)
+```
+
+```{r}
+ip_score_long(
+  probabilities = list(msm_pred_under_1, naive_pred_under_1),
+  data_outcome = df_val_outcome,
+  data_long = df_val_long,
+  treatment_formula = A ~ A_lag_1 + L,
+  treatment_of_interest = "always",
+  visit_times = 0:4, 
+  time_horizon = 5 
+)
+```
+
+```{r}
+ip_score_long(
+  probabilities = list(msm_pred_under_0, naive_pred_under_0),
+  data_outcome = df_val_outcome,
+  data_long = df_val_long,
+  treatment_formula = A ~ A_lag_1 + L,
+  treatment_of_interest = "never",
+  visit_times = 0:4, 
+  time_horizon = 5 
+)
+```
