@@ -275,9 +275,12 @@ ip_score_long(
   treatment_formula = A ~ A_lag_1 + L,
   treatment_of_interest = "always",
   visit_times = 0:4, 
-  time_horizon = 5 
+  time_horizon = 5,
+  quiet = TRUE
 )
 ```
+
+# Cox censoring, arbitrary treatment patterns
 
 ```{r}
 ip_score_long(
@@ -285,8 +288,27 @@ ip_score_long(
   data_outcome = df_val_outcome,
   data_long = df_val_long,
   treatment_formula = A ~ A_lag_1 + L,
-  treatment_of_interest = "never",
+  treatment_of_interest = c(0, 0, NA, NA, NA),
   visit_times = 0:4, 
-  time_horizon = 5 
+  time_horizon = 5,
+  cens_model = "cox",
+  cens_formula = ~ L
+)
+```
+
+# Bootstrap
+
+```{r}
+ip_score_long(
+  probabilities = list(msm_pred_under_0, naive_pred_under_0),
+  data_outcome = df_val_outcome,
+  data_long = df_val_long,
+  treatment_formula = A ~ A_lag_1 + L,
+  treatment_of_interest = c(0, 0, 1, 0, 1),
+  visit_times = 0:4, 
+  time_horizon = 5,
+  cens_model = "cox",
+  cens_formula = ~ L, 
+  bootstrap = 10,quiet = TRUE, bootstrap_progress = FALSE
 )
 ```
