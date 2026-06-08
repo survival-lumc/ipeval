@@ -1,5 +1,5 @@
 ---
-title: "ipeval: an R package for validating predictions under interventions"
+title: "ipeval: an R package for evaluating predictions under interventions"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{ipeval}
