@@ -14,10 +14,10 @@ knitr::opts_chunk$set(
 )
 ```
 
-This vignette demonstrates how to simulate longitudinal data with time-dependent confounding. It also shows how to fit a Cox MSM on this data and how to make predictions with it. We use the validation data and predictions of the Cox MSM in the 
+This vignette shows how to simulate longitudinal data with time-dependent confounding, fit a marginal structural Cox model (MSM), and obtain risk predictions under longitudinal treatment strategies. The resulting validation data and predictions are used in the 
 [next vignette](predictions-under-longitudinal-interventions-evaluation.html).
 
-The code to generate such data was adapted from [Keogh and Van Geloven (2024)](https://doi.org/10.1097/EDE.0000000000001713). Our DAG looks as follows:
+The data-generating mechanism is adapted from [Keogh and Van Geloven (2024)](https://doi.org/10.1097/EDE.0000000000001713) and follows the causal structure shown below.
 
 ![](dag-timedep.png)
 
@@ -26,7 +26,9 @@ library(ipeval)
 library(survival)
 ```
 
-We first initialize matrices for treatment $A$ and confounder $L$, with a row for every subject and a column for every visit. Iterating over each visit, we generate values for $A$ and $L$. During each iteration, we also simulate survival data (survival time with event indicator) using the values of $A$ and $L$ corresponding to that visit. If the survival time for a subject is before their next visit, we fix this as their survival time. If the survival time is after their next visit, we ignore the current survival data and we simulate new survival data at the next iteration, using the new values for $A$ and $L$. This method relies on the memoryless property of the exponential distribution. 
+We generate repeated measurements of a time-varying confounder L and treatment A at five visits. At each visit, treatment depends on the current value of L and previous treatment history, creating time-dependent confounding.
+
+Event and censoring times are simulated within each visit interval using the current values of A and L. If an event occurs before the next visit, the subject's follow-up ends. Otherwise, new values of A and L are generated at the next visit and the process continues. This approach relies on the memoryless property of the exponential distribution.
 
 ```{r}
 simulate_longitudinal_data <- function(n, n_visits = 5, visit_times = 0:4, seed) {
@@ -50,9 +52,9 @@ simulate_longitudinal_data <- function(n, n_visits = 5, visit_times = 0:4, seed)
     }
     
     A[, i] <- if (i == 1) {
-      rbinom(n, 1, plogis(-0.5 + 0.5 * L[, i]))
+      rbinom(n, 1, plogis(0.5 * L[, i]))
     } else {
-      rbinom(n, 1, plogis(-0.5 + 0.5 * L[, i] + 0.8 * A[, i - 1]))
+      rbinom(n, 1, plogis(0.5 * L[, i] + 0.8 * A[, i - 1]))
     }
     
     # To simulate survival times with these time varying variables, we simulate a
@@ -103,10 +105,9 @@ df_dev <- simulate_longitudinal_data(20000, seed = 2)
 df_val <- simulate_longitudinal_data(50000, seed = 3)
 head(df_dev)
 ```
+We now fit a marginal structural Cox model using inverse probability of treatment weighting (IPTW). Additional details can be found in the supplementary materials of Keogh and Van Geloven (2024).
 
-We now have our data with time-dependent confounding structure. We will proceed with fitting a Cox MSM on this data using inverse probability of treatment weights. More detail is given in [Keogh and Van Geloven (2024)](https://doi.org/10.1097/EDE.0000000000001713), supplementary materials.
-
-We first convert our wide data `df_dev` to long format, using convenience functions supplied by this package.
+We first convert the data to long format, with one row per visit per subject. The package provides helper functions for this transformation.
 
 ```{r}
 df_dev_long <- wide_to_long(
@@ -140,14 +141,14 @@ df_dev_long <- df_dev_long[, c("id", "visit_time", "time_end", "status", "L0", "
                 "L", "A", paste0("A_lag_", 1:4))]
 head(df_dev_long)
 ```
-We can use this data to fit our IPTW model. Treatment at one visit depends on the confounder $L$ at that visit and the treatment at the previous visit. Thus, our model is:
+To construct IPT weights, we model treatment assignment at each visit as a function of the current confounder value and the previous treatment value:
 
 ```{r}
 iptw_model <- glm(A ~ L + A_lag_1, family = "binomial", data = df_dev_long)
 print(iptw_model)
 ```
 
-The fitted coefficients are close to the true data generating coefficients. We use this model to compute the IPT-weights:
+The fitted coefficients are close to the true data generating coefficients. We then compute inverse probability of treatment weights and their cumulative products over follow-up:
 
 ```{r}
 iptw_propensity <- predict(iptw_model, type = "response")
@@ -157,16 +158,17 @@ iptw_prob_trt <- ifelse(
     1 - iptw_propensity
   )
 df_dev_long$iptw <- 1 / iptw_prob_trt
-summary(df_dev_long$iptw)
+df_dev_long$iptw_cumprod <- ave(df_dev_long$iptw, df_dev_long$id, FUN = cumprod)
+summary(df_dev_long$iptw_cumprod)
 ```
 
-We can now fit our Cox MSM:
+The cumulative IPT weights are used to fit the marginal structural Cox model:
 
 ```{r}
 cox_msm <- coxph(
   formula = Surv(visit_time, time_end, status) ~ A + A_lag_1 + A_lag_2 + A_lag_3 + A_lag_4 + L0 + P,
   data = df_dev_long,
-  weights = iptw,
+  weights = iptw_cumprod,
   model = TRUE
 )
 
@@ -175,7 +177,7 @@ print(cox_msm)
 
 We will now use `cox_msm` to estimate probabilities of outcomes under interventions in our validation dataset. The interventions of interest are 'never treated', where $A$ is set to 0 at all visit times, and 'always treated', where $A$ is set to 1 at all visit times. These treatment strategies are denoted by $\underline a_0$ and $\underline a_1$ respectively. 
 
-We can estimate the risk under treatment strategy under $\underline a_0$ (and similarly $\underline a_1$) using equation (e4) in [Keogh and Van Geloven (2024)](https://doi.org/10.1097/EDE.0000000000001713), supplementary materials:
+For a given treatment strategy, the risk at time t can be obtained from the fitted MSM using the estimated cumulative hazard (see Equation e4, Keogh and Van Geloven, 2024, supplementary materials):
 
 $R^{\underline a_0}(\tau |X;\beta) = 1 - \text{exp}\left\{-\int_0^\tau h_{T^{\underline a_0}}(u |X;\beta) du\right\}$
 

@@ -2,37 +2,39 @@
 title: "Evaluating predictions under longitudinal interventions"
 output: rmarkdown::html_vignette
 vignette: >
-%\VignetteIndexEntry{Evaluating predictions under longitudinal interventions}
+  %\VignetteIndexEntry{Evaluating predictions under longitudinal interventions}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
-  ---
+---
   
 ```{r, include = FALSE}
-  knitr::opts_chunk$set(
+knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
-  )
+)
 ```
   
 ```{r setup}
-  library(ipeval)
-  library(survival)
+library(ipeval)
+library(survival)
 ```
 
-This vignette demonstrates package functionality for longitudinal treatment strategies in the presence of time-dependent confounding, and the required workflow for evaluation.
+This vignette demonstrates how to evaluate risk predictions under longitudinal treatment strategies in the presence of time-dependent confounding.
 
 For more detail, read [Keogh and Van Geloven (2024)](https://doi.org/10.1097/EDE.0000000000001713), from which the methods in this package are implemented.
 
-At this point, we assume there is some validation dataset with a longitudinal treatment in which time dependent confounding plays a role. We also assume there are some predictions corresponding to an intervention strategy. We use data of which the causal DAG looks as follows:
+We assume that a validation dataset is available, together with risk predictions corresponding to one or more treatment strategies. Throughout this vignette, we use data generated from the causal structure shown below.
 
 ![](dag-timedep.png)
-We have a model that estimates the risk when a subject would never be treated ($a$ set to $0$ for all visits) and when a subject would always be treated ($a$ set to $1$ for all visits). 
 
-In [this  vignette](longitudinal-data-and-cox-models.html), we show how to simulate data with longitudinal treatments and time-dependent confounding, how to fit a Cox MSM on such data, and how to estimate risks under interventions using such a model.
+Suppose we have predicted risks under two intervention strategies:
 
-Here, we start with our validation dataset and the risk predictions. 
+* Never treated: treatment is set to 0 at every visit.
+* Always treated: treatment is set to 1 at every visit.
 
-```{r include=FALSE}
+In [the previous vignette](longitudinal-data-and-cox-models.html), we show how these predictions can be obtained from a marginal structural Cox model (and how such longitidunial data could be generated). Here, we focus on evaluating those predictions.
+
+```{r, include=FALSE}
 
 simulate_longitudinal_data <- function(n, n_visits = 5, visit_times = 0:4, seed) {
   set.seed(seed)
@@ -55,9 +57,9 @@ simulate_longitudinal_data <- function(n, n_visits = 5, visit_times = 0:4, seed)
     }
     
     A[, i] <- if (i == 1) {
-      rbinom(n, 1, plogis(-0.5 + 0.5 * L[, i]))
+      rbinom(n, 1, plogis(0.5 * L[, i]))
     } else {
-      rbinom(n, 1, plogis(-0.5 + 0.5 * L[, i] + 0.8 * A[, i - 1]))
+      rbinom(n, 1, plogis(0.5 * L[, i] + 0.8 * A[, i - 1]))
     }
     
     # To simulate survival times with these time varying variables, we simulate a
@@ -147,11 +149,12 @@ iptw_prob_trt <- ifelse(
     1 - iptw_propensity
   )
 df_dev_long$iptw <- 1 / iptw_prob_trt
-
+df_dev_long$iptw_cumprod <- ave(df_dev_long$iptw, df_dev_long$id, FUN = cumprod)
+  
 cox_msm <- coxph(
   formula = Surv(visit_time, time_end, status) ~ A + A_lag_1 + A_lag_2 + A_lag_3 + A_lag_4 + L0 + P,
   data = df_dev_long,
-  weights = iptw,
+  weights = iptw_cumprod,
   model = TRUE
 )
 
@@ -176,7 +179,7 @@ compute_msm_probabilities <- function(model, data, treatment) {
   pred_under_int <- within(pred_under_int, {
     cumhaz_start <- cumhaz.fun(visit_time)
     cumhaz_end <- cumhaz.fun(end_time)
-    lp <- predict(cox_msm, newdata = pred_under_int, type = "lp")
+    lp <- predict(model, newdata = pred_under_int, type = "lp")
     contribution <- (cumhaz_end - cumhaz_start) * exp(lp)
   })
   
@@ -195,7 +198,12 @@ summary(risk_under_0)
 summary(risk_under_1)
 ```
 
-We assume our data is in the wide format as given. To evaluate the risk predictions, we will use the `ip_score_long()` function, which requires a data.frame consisting of the outcomes (that is, one row per subject, with survival time and status). It also requires data in long format, with a row for each visit and subject. In this long format, the treatment model is fitted, so if treatment at a certain visit depends on a confounder $L$ at that visit, but also on treatment values at previous visits, all these variables should have a column. In our example, treatment $A$ at each visit depends on confounder $L$ of the same visit and on treatment value $A$ of the previous visit. Thus, our long format data should have columns A, L, and A_lag_1.
+We will use the `ip_score_long()` function, which evaluates risk predictions under longitudinal interventions using inverse-probability weighting. It requires:
+- an outcome dataset with one row per subject, with survival time and status,
+- a longitudinal dataset with one row per subject and visit,
+- a model describing the treatment assignment mechanism.
+
+The longitudinal dataset must contain all variables used in the treatment model. In our example, treatment depends on the current confounder value L and the previous treatment value, so the variables L, A, and A_lag_1 are required.
 
 This package provides some convenience functions to reshape your data in this way.
 
@@ -209,9 +217,9 @@ df_val_long <- add_lag_terms(df_val_long, "A")
 head(df_val_long)
 ```
 
-Assuming independent censoring, we can now use the `ip_score_long()` function as follows:
+Assuming independent censoring, we can evaluate the predictions under the never-treated strategy as follows:
 
-```{r}
+```{r, fig.dim=c(5,5)}
 ip_score_long(
   probabilities = risk_under_0,
   data_outcome = df_val_outcome,
@@ -219,11 +227,13 @@ ip_score_long(
   treatment_formula = A ~ A_lag_1 + L,
   treatment_of_interest = "never",
   visit_times = 0:4, 
-  time_horizon = 5 
+  time_horizon = 5
 )
 ```
 
-```{r}
+The same procedure can be used for the always-treated strategy:
+
+```{r, fig.dim=c(5,5)}
 ip_score_long(
   probabilities = risk_under_1,
   data_outcome = df_val_outcome,
@@ -231,40 +241,45 @@ ip_score_long(
   treatment_formula = A ~ A_lag_1 + L,
   treatment_of_interest = "always",
   visit_times = 0:4, 
-  time_horizon = 5,
-  quiet = FALSE
+  time_horizon = 5
 )
 ```
 
-# Cox censoring, arbitrary treatment patterns
+# Arbitrary treatment patterns
+
+The treatment strategy does not need to be "always" or "never" treated. For example, the following strategy specifies treatment at the first two visits and leaves subsequent treatment unconstrained:
 
 ```{r}
 ip_score_long(
-  probabilities = list(msm_pred_under_0, naive_pred_under_0),
+  probabilities = risk_under_0,
   data_outcome = df_val_outcome,
   data_long = df_val_long,
   treatment_formula = A ~ A_lag_1 + L,
   treatment_of_interest = c(0, 0, NA, NA, NA),
   visit_times = 0:4, 
   time_horizon = 5,
-  cens_model = "cox",
-  cens_formula = ~ L
+  metrics = c("auc", "brier", "oeratio")
 )
 ```
 
-# Bootstrap
+# Censoring dependent on time varying variables
+
+In the previous examples, we did not specify the censoring mechanism. By default, this is done with Kaplan-Meier. It is also possible to specify a Cox censoring model with time varying variables. These variables should then be available as columns in ```data_long```. As a demonstration, this can be achieved as follows:
 
 ```{r}
 ip_score_long(
-  probabilities = list(msm_pred_under_0, naive_pred_under_0),
+  probabilities = risk_under_1,
   data_outcome = df_val_outcome,
   data_long = df_val_long,
   treatment_formula = A ~ A_lag_1 + L,
-  treatment_of_interest = c(0, 0, 1, 0, 1),
+  treatment_of_interest = c(1, 1, 1, 1, 1),
   visit_times = 0:4, 
   time_horizon = 5,
   cens_model = "cox",
-  cens_formula = ~ L, 
-  bootstrap = 10,quiet = TRUE, bootstrap_progress = FALSE
+  cens_formula = ~ A + A_lag_1 + L,
+  metrics = c("auc", "brier", "oeratio")
 )
 ```
+
+Note that the coefficients of the IPC model are close to 0. This is expected as we simulated independent censoring.
+
