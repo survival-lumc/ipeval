@@ -516,7 +516,8 @@ get_predictions <- function(object, data, treatment_column,
   predictions <- lapply(
     X = object,
     FUN = function(x) {
-      if (is.numeric(x) && is.null(dim(x))) {
+      if (is.numeric(x) && (is.null(dim(x)) || length(dim(x)) == 1)) {
+        x <- as.vector(x)
         stopifnot("Predictions must be of length nrow(data)" =
                     length(x) == nrow(data))
         stopifnot("Predictions must be in interval [0,1]" =
