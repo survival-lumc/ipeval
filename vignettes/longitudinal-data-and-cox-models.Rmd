@@ -1,8 +1,8 @@
 ---
-title: "Generating time-dependent confounding and fitting Cox models"
+title: "Generating time-dependent confounding data and fitting Marginal Structural Cox Models"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Generating time-dependent confounding and fitting Marginal Structural Cox Models}
+  %\VignetteIndexEntry{Generating time-dependent confounding data and fitting Marginal Structural Cox Models}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -62,7 +62,7 @@ simulate_longitudinal_data <- function(n, n_visits = 5, visit_times = 0:4, seed)
     # there is an event before the next visit. After the last visit, we just take
     # the last simulated survival time. 
     new_event_time <- rexp(n, exp(-2 + -0.5 * A[, i] + 0.5 * L[, i] + 0.5 * P))
-    new_censor_time <- rexp(n, exp(-2))
+    new_censor_time <- rexp(n, exp(-3))
     
     if (i != n_visits) {
       time_until_next_visit <- visit_times[i+1] - visit_times[i]
@@ -99,8 +99,8 @@ simulate_longitudinal_data <- function(n, n_visits = 5, visit_times = 0:4, seed)
   data.frame(id = 1:n, time, status, A, L, P)
 }
 
-df_dev <- simulate_longitudinal_data(10000, seed = 2)
-df_val <- simulate_longitudinal_data(20000, seed = 3)
+df_dev <- simulate_longitudinal_data(20000, seed = 2)
+df_val <- simulate_longitudinal_data(50000, seed = 3)
 head(df_dev)
 ```
 
