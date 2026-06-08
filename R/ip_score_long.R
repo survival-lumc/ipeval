@@ -263,6 +263,9 @@ add_lag_terms <- function(df, var, lag = 1, fill = 0) {
 #'
 #'@export
 #'@seealso \code{\link{ip_score}}
+#'
+#' Open the corresponding vignette for more extensive examples with
+#' \code{vignette("longitudinal", package = "ipeval")}
 #'@references Keogh RH, Van Geloven N. Prediction Under Interventions:
 #'  Evaluation of Counterfactual Performance Using Longitudinal Observational
 #'  Data. Epidemiology. 2024;35(3):329-339.
