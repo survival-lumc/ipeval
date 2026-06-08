@@ -219,7 +219,7 @@ head(df_val_long)
 
 Assuming independent censoring, we can evaluate the predictions under the never-treated strategy as follows:
 
-```{r, fig.dim=c(5,5)}
+```{r}
 ip_score_long(
   probabilities = risk_under_0,
   data_outcome = df_val_outcome,
@@ -233,7 +233,7 @@ ip_score_long(
 
 The same procedure can be used for the always-treated strategy:
 
-```{r, fig.dim=c(5,5)}
+```{r}
 ip_score_long(
   probabilities = risk_under_1,
   data_outcome = df_val_outcome,

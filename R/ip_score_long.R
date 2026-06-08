@@ -194,7 +194,8 @@ add_lag_terms <- function(df, var, lag = 1, fill = 0) {
 #'  computed. Options are c("auc", "brier", “scaled_brier”, "oeratio",
 #'  "calplot").
 #'@param visit_times A numeric vector, indicating the times of the visits. The
-#'  first visit must always be at time 0.
+#'  first visit must always be at time 0. Should have the same length as
+#'  `treatment_of_interest`.
 #'@param time_horizon the prediction horizon of interest.
 #'@param cens_model Model for estimating inverse probability of censored weights
 #'  (IPCW). Methods currently implemented are Kaplan-Meier ("KM") or Cox
@@ -224,10 +225,12 @@ add_lag_terms <- function(df, var, lag = 1, fill = 0) {
 #'  weights are computed using the treatment_formula, but they can be specified
 #'  directly via this argument. A user-defined function can also be specified,
 #'  which takes as input arguments 'data_outcome' and 'data_long' and returns a
-#'  numeric vector of the IPTW weight. See details.
-#'@param ipcw A numeric vector with same length as data_long, containing the
-#'  inverse probability of censoring weights. If ipcw is not specified, these
-#'  weights are computed using the cens_formula, but they can be specified
+#'  numeric vector of the IPTW weight. The first argument 'data_outcome' should
+#'  probably not be used in this function. See details.
+#'@param ipcw A numeric vector, containing the inverse probability of censoring
+#'  weights at the time horizon, or at their event time, whichever happens
+#'  first. If ipcw is not specified, these weights are computed using the
+#'  cens_formula, but they can be specified
 #'  directly via this argument. A user-defined function can also be specified,
 #'  which takes as input arguments 'data_outcome' and 'data_long' and returns a
 #'  numeric vector of the IPCW weight. See details.
@@ -279,6 +282,7 @@ add_lag_terms <- function(df, var, lag = 1, fill = 0) {
 #'   time <- runif(n, 0, 6)
 #'   status <- rbinom(n, 1, 0.5)
 #' })
+#' # A0 is at time t = 0, A1 is at time t = 2
 #'
 #' # If you have data in this 'wide' form, then usually you can use the convenience
 #' # functions to make it suitable for ip_score_long
