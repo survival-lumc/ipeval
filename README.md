@@ -169,25 +169,27 @@ ip_score(
 )
 #> Estimation of the performance of the prediction model in a
 #>  pseudopopulation where everyone's treatment A was set to 0.
-#> The pseudopopulation ($pseudopop) is constructed from 2561 (51.2%)
-#>  subjects who indeed received treatment level 0. These subjects are
-#>  reweighted to represent the full target population under a hypothetical
-#>  intervention in which everyone received this treatment level.
+#> The pseudopopulation is constructed from 2561 (51.2%) subjects
+#>  ($pseudopop) in data who indeed received treatment level 0. These
+#>  subjects are reweighted to represent the full target population under a
+#>  hypothetical intervention in which everyone received this treatment
+#>  level.
 #> The following assumptions must be satisfied for correct inference:
 #> 
 #> Causal assumptions:
 #> 
 #> - Conditional exchangeability: after adjustment for the covariates used
 #>  to construct the inverse probability of treatment weights (IPTW), i.e.,
-#>  {L}, there are no unmeasured confounders of treatment assignment and
-#>  outcome.
+#>  {L}, there is no unmeasured confounding for the relation between
+#>  treatment and outcome.
 #> - Conditional positivity: the probability of receiving treatment level
-#>  0 should be greated than zero for each combination of the variables {L}
-#>  that is observed in the full population. The distribution of
-#>  IPT-weights can be assessed with $ipt$weights[$pseudopop$ids].
-#> - Consistency: the observed outcome under the received treatment equals
-#>  the potential outcome under that treatment. This includes the
-#>  assumption of no interference between subjects.
+#>  0 should be greater than zero for each value (combination) of the
+#>  variable(s) {L} that is observed in the full population. The
+#>  distribution of IPT-weights can be assessed with
+#>  $ipt$weights[$pseudopop$ids].
+#> - Consistency: the observed outcome under the received treatment level
+#>  equals the potential outcome under that treatment level. This includes
+#>  the assumption of no interference between subjects.
 #> 
 #> Modeling assumptions:
 #> 

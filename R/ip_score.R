@@ -1,139 +1,151 @@
 #' Interventional prediction score
 #'
-#' Estimates the predictive performance of predictions under interventions, by
-#' forming a weighted pseudopopulation in which every subject was assigned the
-#' treatment of interest.
+#' Estimates the performance of predictions of binary outcomes under baseline
+#' interventions, by reweighting the data to form a pseudo-population in which
+#' every subject was assigned the treatment level of interest.
 #'
-#' When supplying a glm or coxph model, the model should be able to estimate
-#' risks under the intervention of interest. This could be done in two ways: the
-#' model does not have a treatment covariate, and always estimates the risk
-#' under intervention of interest. Alternatively, the model has a covariate for
-#' treatment. This function then automatically estimates the risk under the
-#' treatment of interest for all subjects, even if they were assigned
-#' alternative treatment.
+#' When supplying a glm or coxph model as object, the function will try to
+#' estimate risks from the model under the treatment level of interest for all
+#' subjects in data. If the model does not have the treatment as covariate, it
+#' is assumed it always estimates the risk under the treatment level of
+#' interest. Alternatively, if the model includes the treatment as covariate,
+#' the function estimates the risk under the treatment level of interest for all
+#' subjects in data, even if they were assigned an alternative treatment level.
 #'
-#' All performance metrics are computed on the weighted population in which
-#' every subject was counterfactually assigned treatment of interest. \code{auc}
-#' is area under the (ROC) curve. Brier score is defined as \code{1 / sum(iptw)
-#' sum(predictions_i - outcome_i)^2}. Scaled brier score is also available
-#' (\code{metrics = "scaled_brier"}). For the O/E ratio, the numerator
-#' (observed) is the weighted fraction of events in the pseudopopulation, and
-#' the denominator (expected) is the unweighted mean of risk estimates of the
-#' original unweighted population. The \code{calplot} option generates a
+#' All performance metrics are computed on the weighted population mimicking the
+#' hypothetical situation where every subject’s treatment level was set to the
+#' treatment level of interest (and where nobody was censored). "auc" is area
+#' under the (ROC) curve. "brier" is Brier score, ranging from 0 to 1. Scaled
+#' brier score is also available (metrics = "scaled_brier"). For the O/E ratio,
+#' the numerator (observed) is the (weighted) fraction of 'observed' events in
+#' the pseudopopulation, and the denominator (expected) is the (unweighted) mean
+#' of risk estimates in the original population. The calplot option generates a
 #' calibration plot, with default 8 subgroups. More/less subgroups can be
-#' specified by appending calplot with a number indicating the number of
-#' subgroups, e.g. \code{metrics = calplot10} for 10 subgroups.
+#' specified by appending “calplot” with a number indicating the number of
+#' subgroups, e.g. metrics = "calplot10" for 10 subgroups.
 #'
-#' For the null model, the O/E ratio and the scaled Brier score, the mean
-#' predicted risk under the treatment of interest is required. This is computed
-#' by the weighted mean in the ('counterfactually' uncensored) pseudopopulation.
-#' For survival data, this null prediction could theoretically also be computed
-#' with a weighted Kaplan-Meier, which is supposed to be more efficient, but
-#' computationally a lot slower. Both methods are valid.
+#' The KM censoring distribution is estimated using `prodlim::prodlim(...,
+#' reverse = TRUE)`. This correctly estimates the censoring distribution when
+#' there are ties between event and censoring times.  When using a Cox model to
+#' estimate the censoring distribution, the event indicator is flipped. This
+#' does not preserve the usual tie-handling convention: in standard survival
+#' analysis, censoring is assumed to occur after events at the same time point,
+#' but after reversing the indicator the opposite ordering is assumed. A
+#' possible workaround is to add a small positive offset (`epsilon`) to all
+#' censoring times before fitting the censoring model.
 #'
-#' Stabilized IPT-weigths are computed by estimating a null model for treatment.
-#' E.g. weights are \code{P(A = a) / P(A = a | L = l)}, if the given
-#' treatment_formula is \code{A ~ L}. In a pseudopopulation in which
-#' everybody's treatment was set to a certain level `a`, the numerator of this
-#' expression is constant. The resulting performance metrics are not influenced
-#' by multiplication of weights with a constant.
+#' The null model is computed by the weighted mean outcome in the
+#' pseudopopulation. For survival data, this null prediction could also be
+#' computed using a weighted Kaplan-Meier estimator, which would be more
+#' efficient, but computationally slower.
 #'
-#' Bootstrap is not possible when manually specifiying the IPTW/IPCW as numeric
-#' vectors. If specifying a function that computes the ITPW/IPCW given data, it
-#' is possible. The given function will be called on each bootstrapped dataset
-#' to compute the 95\% CI of the performance metrics. More advanced techniques,
-#' such as thresholding extreme IP weights, can be implemented this way. The
-#' censoring weight returned should be the 1 / probability of remaining
+#' Stabilized IPT-weigths can be computed by P(A = a) / P(A = a | L = l), if the
+#' given treatment_formula is A ~ L. In the setting that we consider here, the
+#' numerator of this expression is constant. The resulting performance metrics
+#' are therefore not impacted by multiplication of all weights with the same
+#' constant.
+#'
+#' Bootstrapping is not possible when manually specifiying the IPTW/IPCW as
+#' numeric vectors. If specifying a user-defined function that computes the
+#' ITPW/IPCW given data, it is possible. The given function will be called on
+#' each bootstrapped dataset and resulting metrics are used to compute the 95%
+#' CIs. More advanced techniques, such as thresholding extreme IP weights, can
+#' be implemented through a user-defined weight function. The censoring weight
+#' returned by this function should be the 1 / probability of remaining
 #' uncensored at the time horizon, or at their event time, whichever happens
 #' first.
 #'
-#' @param object One of the following three options to be validated:
+#' @param object One of the following three options can be used to input the
+#'   predictions to be evaluated:
 #' \itemize{
-#'   \item a numeric vector, corresponding to risk predictions under
-#'   intervention of interest.
-#'   \item a glm or coxph model, capable of estimating risks under intervention
-#'   of interest. See details.
+#'   \item a numeric vector, corresponding to the risk estimates under evaluation
+#'   \item a glm or coxph model, from which the predictions under evaluation can
+#'   be derived. See details.
 #'   \item a (named) list, with one or more of the previous 2 options, for
-#'   validating and comparing multiple models at once.
+#'   evaluating and comparing multiple prediction vectors/models at once.
 #' }
 #' @param data A data.frame containing the observed outcome, assigned treatment,
-#'   and necessary confounders for the validation of object.
-#' @param outcome The outcome, to be evaluated within data. This could either be
-#'   the name of a numeric/logical column in data, or a Surv object for
+#'   and necessary adjustment variables (confounders) for the evaluation of
+#'   object.
+#' @param outcome The outcome of interest within data. This could either be the
+#'   name of a numeric/logical column in data, or a Surv object for
 #'   time-to-event data, e.g. Surv(time, status), if time and status are columns
 #'   in data.
-#' @param treatment_formula A formula which identifies the treatment (left hand
-#'   side) and the confounders (right hand side) in the data. E.g. A ~ L. The
-#'   treatment can be either binary (0/1) or a categorical factor. The
-#'   confounders are used to estimate the inverse probability of treatment
-#'   weights (IPTW) model. The IPTW can also be specified themselves using the
-#'   iptw argument, in which case the right hand side of this formula is ignored
-#'   (the left hand side must still identify the treatment, i.e. A ~ 1).
-#' @param treatment_of_interest A treatment level for which the interventional
-#'   performance measures should be evaluated.
-#' @param metrics A character vector specifying which performance metrics to be
-#'   computed. Options are c("auc", "brier", "oeratio", "calplot"). See details.
+#' @param treatment_formula A formula which indicates the treatment/intervention
+#'   (left hand side) and the adjustment variables (right hand side) in the
+#'   data. E.g. A ~ L. The left hand side can be either a binary treatment
+#'   (coded as 0/1 numeric, logical or factor) or a treatment with more than two
+#'   categories (coded as a factor). The right hand side variables  are used to
+#'   estimate the inverse probability of treatment weights (IPTW). The IPTW can
+#'   also be specified directly using the iptw argument, in which case the right
+#'   hand side of this formula is ignored (the left hand side must still
+#'   indicate the treatment, i.e. A ~ 1).
+#' @param treatment_of_interest A treatment level under which the predictions
+#'   should be evaluated.
+#' @param metrics A character vector specifying which performance metrics to
+#'   compute. Options are c("auc", "brier", “scaled_brier”, "oeratio",
+#'   "calplot"). See details.
 #' @param time_horizon For time to event data, the prediction horizon of
 #'   interest.
 #' @param cens_model Model for estimating inverse probability of censored
 #'   weights (IPCW). Methods currently implemented are Kaplan-Meier ("KM") or
-#'   Cox ("cox"), both applied to the censored times. KM is only supported when
-#'   the right hand side of cens_formula is 1.
-#' @param cens_formula Formula for which the r.h.s. determines the censoring
-#'   probabilities. I.e. ~ x1 + x2.
-#' @param null_model If TRUE fit a risk prediction model which ignores the
-#'   covariates and predicts the same value for all subjects. The model is
-#'   fitted using the data in which all subjects are 'counterfactually' assigned
-#'   the treatment of interest (using the IPTW, as estimated using the
-#'   treatment_formula or as given by the iptw argument). For time-to-event
-#'   outcomes, the subjects are also 'counterfactually' uncensored (using the
-#'   IPCW, as estimated using the cens_formula, or as given by the ipcw
-#'   argument).
+#'   Cox ("cox"), with censoring times derived from the Surv object specified
+#'   under outcome, reversing the event indicator, see details. KM is only
+#'   supported when the right hand side of cens_formula is 1.
+#' @param cens_formula Model formula for which the right hand side is used in
+#'   estimating the censoring probabilities. E.g. ~ x1 + x2.
+#' @param null_model If TRUE fits a model without covariates (intercept only)
+#'   that estimates the same probability for all subjects in data. The model is
+#'   fitted using the reweighted data in which all subjects 'counterfactually'
+#'   received the treatment level of interest (using the IPTW, as estimated
+#'   using the treatment_formula or as given by the iptw argument). For
+#'   time-to-event outcomes, the subjects are also 'counterfactually' uncensored
+#'   (using the IPCW, as estimated using the cens_formula, or as given by the
+#'   ipcw argument). The null_model can be used as reference (baseline) model.
 #' @param stable_iptw if TRUE, estimate stabilized IPT-weights. Does not
 #'   influence the metrics. See details.
 #' @param bootstrap If this is an integer greater than 0, this indicates the
-#'   number of bootstrap iterations, to compute 95\% confidence intervals around
-#'   the performance metrics.
+#'   number of bootstrap iterations, used to compute 95% confidence intervals
+#'   around the performance metrics.
 #' @param bootstrap_progress if set to TRUE, print a progress bar indicating the
-#'   progress of bootstrap procedure.
+#'   progress of the bootstrap procedure.
 #' @param iptw A numeric vector, containing the inverse probability of treatment
-#'   weights. These are normally computed using the treatment_formula, but they
-#'   can be specified directly via this argument. A function can also be specified,
-#'   which takes as input 'data' and returns a numeric vector of IPTW weights.
-#'   See details.
-#' @param ipcw  A numeric vector, containing the inverse probability of censoring
-#'   weights. These are normally computed using the cens_formula, but they
-#'   can be specified directly via this argument. A function can also be specified,
-#'   which takes as input 'data' and returns a numeric vector of IPCW weights.
-#'   See details.
+#'   weights. If iptw is not specified, these weights are  computed using the
+#'   treatment_formula, but they can be specified directly via this argument. A
+#'   user-defined function can also be specified, which takes as input 'data'
+#'   and returns a numeric vector of IPTW weights. See details.
+#' @param ipcw A numeric vector, containing the inverse probability of censoring
+#'   weights at the time horizon, or at their event time, whichever happens
+#'   first. If ipcw is not specified, these weights are computed using the
+#'   cens_formula, but they can be specified directly via this argument. A
+#'   user-defined function can also be specified, which takes as input 'data'
+#'   and returns a numeric vector of IPCW weights. See details.
 #' @param quiet If set to TRUE, don't print assumptions.
-#' @param strip_ipt_models If set to TRUE (default), the models for the IPT and
-#'   IPC-weights are stripped of unnecessary data. Set to FALSE if you plan to
-#'   do extensive diagnostics on the fitted IPT/IPC models. The resulting
-#'   `ip_score` object will use quite a lot more memory.
+#' @param strip_ipt_models If set to TRUE (default), unnecessary components from
+#'   the IPT- and IPC-model objects are not stored to save memory. Set to FALSE
+#'   if you want to store the full IPT/IPC model objects.
 #'
 #' @returns An object of class `ip_score`, for which the `print()` and `plot()`
 #' methods are implemented. The object is a nested list containing: \itemize{
-#'   \item `$score`, which contains the predictive performance in the
-#'   pseudopopulation dataset.
-#'   \item `$bootstrap`, if applicable, the 95\% confidence intervals of the
+#'   \item `$score`, contains the estimated predictive performance metrics.
+#'   \item `$bootstrap`, if requested, the 95% confidence intervals of the
 #'   performance metrics, and the performance metrics for each individual
 #'   bootstrap iteration.
-#'   \item `$outcome`, the observed outcome of the original dataset.
-#'   \item `$treatment`, the observed outcome of the original dataset.
+#'   \item `$outcome`, the observed outcomes in data.
+#'   \item `$treatment`, the observed treatment levels in data.
 #'   \item `$predictions`, the predictions to be evaluated, i.e. the probability
-#'   of event for each patient, had their treatment been set to
-#'   treatment_of_interest.
+#'   of event under the intervention of interest for each subject.
 #'   \item `$ipt`, method, model and inverse probability of treatment weights
-#'   (IPTW). These are NA for patients that are not in the pseudopopulation.
+#'   (IPTW). These are NA for subjects who are not directly used in the
+#'   pseudo-population.
 #'   \item `$ipc`, method, model and inverse probability of censoring weights
-#'   (IPCW). These are NA for patients that were censored.
+#'   (IPCW). These are NA for subjects who were censored.
 #'   \item `$pseudopop`, binary vector indicating which subjects of the original
-#'      population were in the pseudopopulation, by following the treatment
-#'      of interest and remaining uncensored, if applicable.
+#'   population were used to create the pseudo-population, by receiving the
+#'   treatment level of interest and remaining uncensored, if applicable.
 #'   }
-#'   The print method summarizes the results and if (quiet = FALSE), prints
-#'   the assumptions required for valid inference.
+#'   The print method summarizes the results and if (quiet = FALSE), prints the
+#'   assumptions required for valid inference.
 #'
 #' @export
 #'
@@ -158,10 +170,9 @@
 #'
 #' random <- runif(n, 0, 1)
 #' model <- glm(Y ~ A + P, data = data, family = "binomial")
-#' naive_perfect <- data$Y
 #'
 #' score <- ip_score(
-#'   object = list("ran" = random, "mod" = model, "per" = naive_perfect),
+#'   object = list(random, model),
 #'   data = data,
 #'   outcome = Y,
 #'   treatment_formula = A ~ L,

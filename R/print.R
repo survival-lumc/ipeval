@@ -143,6 +143,13 @@ assumptions <- function(x) {
   pp <- x$pseudopop$ids
   horizon <- x$outcome$time_horizon
 
+  if ("ip_score_long" %in% class(x)) {
+    level <- "strategy"
+  } else {
+    level <- "level"
+  }
+
+
   if (!grepl("*", trt_val, fixed = TRUE)) {
     pp("Estimation of the performance of the prediction model in a pseudopopulation
      where everyone's treatment ", trt_col, " was set to ", trt_val, ".")
@@ -153,20 +160,20 @@ assumptions <- function(x) {
   }
 
   if (x$outcome$type == "binary") {
-    pp("The pseudopopulation ($pseudopop) is constructed from ", sum(pp),
+    pp("The pseudopopulation is constructed from ", sum(pp),
        " (", round(mean(pp)*100,1),
-       "%) subjects who indeed received treatment level ", trt_val,
+       "%) subjects ($pseudopop) in data who indeed received treatment ", level, " ", trt_val,
        ". These subjects are reweighted to represent the full target population
        under a hypothetical intervention in which everyone received this
-       treatment level.")
+       treatment ", level, ".")
   } else {
-    pp("The pseudopopulation ($pseudopop) is constructed from ", sum(pp),
+    pp("The pseudopopulation  is constructed from ", sum(pp),
        " (", round(mean(pp)*100,1),
-       "%) subjects who indeed received treatment level ", trt_val,
+       "%) subjects ($pseudopop) in data who indeed received treatment ", level, " ", trt_val,
        " and remained uncensored till time=", horizon,
        ". These subjects are reweighted to represent the full target population
        under a hypothetical intervention in which everyone received this
-       treatment level and remained uncensored till time=", horizon, ".")
+       treatment ", level, " and remained uncensored till time=", horizon, ".")
   }
 
   pp("The following assumptions must be satisfied for correct inference:")
@@ -177,16 +184,16 @@ assumptions <- function(x) {
 
   pp("- Conditional exchangeability: after adjustment for the covariates used to construct
   the inverse probability of treatment weights (IPTW), i.e., ", confounders,
-  ", there are no unmeasured confounders of treatment assignment and outcome.")
+  ", there is no unmeasured confounding for the relation between treatment and outcome.")
 
-  pp("- Conditional positivity: the probability of receiving treatment level ",
-     trt_val, " should be greated than zero for each combination of the
-     variables ", confounders, " that is observed in the full population. The
+  pp("- Conditional positivity: the probability of receiving treatment ", level, " ",
+     trt_val, " should be greater than zero for each value (combination) of the
+     variable(s) ", confounders, " that is observed in the full population. The
      distribution of IPT-weights can be assessed with
      $ipt$weights[$pseudopop$ids].")
 
-  pp("- Consistency: the observed outcome under the received treatment equals
-     the potential outcome under that treatment. This includes the assumption of
+  pp("- Consistency: the observed outcome under the received treatment ", level, " equals
+     the potential outcome under that treatment ", level, ". This includes the assumption of
      no interference between subjects.")
 
   if (x$outcome$type == "survival") {
