@@ -1,0 +1,223 @@
+---
+title: "Generating time-dependent confounding and fitting Cox models"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Generating time-dependent confounding and fitting Marginal Structural Cox Models}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+This vignette demonstrates how to simulate longitudinal data with time-dependent confounding. It also shows how to fit a Cox MSM on this data and how to make predictions with it. We use the validation data and predictions of the Cox MSM in the 
+[next vignette](predictions-under-longitudinal-interventions-evaluation.html).
+
+The code to generate such data was adapted from [Keogh and Van Geloven (2024)](https://doi.org/10.1097/EDE.0000000000001713). Our DAG looks as follows:
+
+![](dag-timedep.png)
+
+```{r setup}
+library(ipeval)
+library(survival)
+```
+
+We first initialize matrices for treatment $A$ and confounder $L$, with a row for every subject and a column for every visit. Iterating over each visit, we generate values for $A$ and $L$. During each iteration, we also simulate survival data (survival time with event indicator) using the values of $A$ and $L$ corresponding to that visit. If the survival time for a subject is before their next visit, we fix this as their survival time. If the survival time is after their next visit, we ignore the current survival data and we simulate new survival data at the next iteration, using the new values for $A$ and $L$. This method relies on the memoryless property of the exponential distribution. 
+
+```{r}
+simulate_longitudinal_data <- function(n, n_visits = 5, visit_times = 0:4, seed) {
+  set.seed(seed)
+  
+  L <- matrix(nrow = n, ncol = n_visits)
+  A <- matrix(nrow = n, ncol = n_visits)
+  P <- runif(n)
+  time <- rep(NA, n)
+  status <- rep(NA, n)
+  
+  for (i in 1:n_visits) {
+    
+    # simulate A, L, even if a patient already has had an event (and therefore
+    # misses subsequent visits). These are set to NA later.
+    
+    L[, i] <- if (i == 1) {
+      rnorm(n, 0, 1)
+    } else {
+      rnorm(n, 0.8 * L[, i - 1] - A[, i - 1] + 0.1 * (i-1))
+    }
+    
+    A[, i] <- if (i == 1) {
+      rbinom(n, 1, plogis(-0.5 + 0.5 * L[, i]))
+    } else {
+      rbinom(n, 1, plogis(-0.5 + 0.5 * L[, i] + 0.8 * A[, i - 1]))
+    }
+    
+    # To simulate survival times with these time varying variables, we simulate a
+    # survival time at the first visit, using the corresponding values of A and L
+    # at that visit. If subject survived until after the next visit, we simulate
+    # another survival time, this time using the new values of A and L, etc until
+    # there is an event before the next visit. After the last visit, we just take
+    # the last simulated survival time. 
+    new_event_time <- rexp(n, exp(-2 + -0.5 * A[, i] + 0.5 * L[, i] + 0.5 * P))
+    new_censor_time <- rexp(n, exp(-2))
+    
+    if (i != n_visits) {
+      time_until_next_visit <- visit_times[i+1] - visit_times[i]
+    } else {
+      time_until_next_visit <- Inf
+    }
+    
+    new_time <- pmin(new_event_time, new_censor_time)
+    new_status <- new_event_time < new_censor_time
+    
+    # if there was an event before the next visit, use that, if not, time and
+    # status are kept at NA and are given another chance next iteration
+    status <- ifelse(
+      is.na(status) & new_time < time_until_next_visit,
+      new_status,
+      status
+    )
+    time <- ifelse(
+      is.na(time) & new_time < time_until_next_visit,
+      visit_times[i] + new_time,
+      time
+    )
+  }
+  
+  # wipe A and L values after events (no visit after event)
+  for (i in 1:n_visits) {
+    A[, i] <- ifelse(time < visit_times[i], rep(NA, n), A[, i])
+    L[, i] <- ifelse(time < visit_times[i], rep(NA, n), L[, i])
+  }
+  
+  colnames(A) <- paste0("A", 0:(n_visits - 1))
+  colnames(L) <- paste0("L", 0:(n_visits - 1))
+  
+  data.frame(id = 1:n, time, status, A, L, P)
+}
+
+df_dev <- simulate_longitudinal_data(10000, seed = 2)
+df_val <- simulate_longitudinal_data(20000, seed = 3)
+head(df_dev)
+```
+
+We now have our data with time-dependent confounding structure. We will proceed with fitting a Cox MSM on this data using inverse probability of treatment weights. More detail is given in [Keogh and Van Geloven (2024)](https://doi.org/10.1097/EDE.0000000000001713), supplementary materials.
+
+We first convert our wide data `df_dev` to long format, using convenience functions supplied by this package.
+
+```{r}
+df_dev_long <- wide_to_long(
+    df_dev,
+    baseline_variables = c("id", "time", "status", "L0", "P"),
+    wide_variables = list(A = paste0("A", 0:4),
+                          L = paste0("L", 0:4)),
+    visit_times = 0:4,
+    outcome_times = df_dev$time
+)
+
+# set the time intervals correctly. The start time of the interval is given by
+# visit_time. For the interval end time, use the start of the next interval, or
+# the survival time, whichever happens earlier. If there is no next interval
+# (last visit), use the survival time.
+df_dev_long$time_end <- ifelse(
+  df_dev_long$visit_time == 4,
+  df_dev_long$time,
+  pmin(df_dev_long$visit_time + 1, df_dev_long$time)
+)
+
+df_dev_long$status <- ifelse(
+  df_dev_long$time_end == df_dev_long$time,
+  df_dev_long$status,
+  0
+)
+df_dev_long$time <- NULL
+
+df_dev_long <- add_lag_terms(df_dev_long, "A", 1:4)
+df_dev_long <- df_dev_long[, c("id", "visit_time", "time_end", "status", "L0", "P",
+                "L", "A", paste0("A_lag_", 1:4))]
+head(df_dev_long)
+```
+We can use this data to fit our IPTW model. Treatment at one visit depends on the confounder $L$ at that visit and the treatment at the previous visit. Thus, our model is:
+
+```{r}
+iptw_model <- glm(A ~ L + A_lag_1, family = "binomial", data = df_dev_long)
+print(iptw_model)
+```
+
+The fitted coefficients are close to the true data generating coefficients. We use this model to compute the IPT-weights:
+
+```{r}
+iptw_propensity <- predict(iptw_model, type = "response")
+iptw_prob_trt <- ifelse(
+    df_dev_long$A == 1,
+    iptw_propensity,
+    1 - iptw_propensity
+  )
+df_dev_long$iptw <- 1 / iptw_prob_trt
+summary(df_dev_long$iptw)
+```
+
+We can now fit our Cox MSM:
+
+```{r}
+cox_msm <- coxph(
+  formula = Surv(visit_time, time_end, status) ~ A + A_lag_1 + A_lag_2 + A_lag_3 + A_lag_4 + L0 + P,
+  data = df_dev_long,
+  weights = iptw,
+  model = TRUE
+)
+
+print(cox_msm)
+```
+
+We will now use `cox_msm` to estimate probabilities of outcomes under interventions in our validation dataset. The interventions of interest are 'never treated', where $A$ is set to 0 at all visit times, and 'always treated', where $A$ is set to 1 at all visit times. These treatment strategies are denoted by $\underline a_0$ and $\underline a_1$ respectively. 
+
+We can estimate the risk under treatment strategy under $\underline a_0$ (and similarly $\underline a_1$) using equation (e4) in [Keogh and Van Geloven (2024)](https://doi.org/10.1097/EDE.0000000000001713), supplementary materials:
+
+$R^{\underline a_0}(\tau |X;\beta) = 1 - \text{exp}\left\{-\int_0^\tau h_{T^{\underline a_0}}(u |X;\beta) du\right\}$
+
+In practice, this can be done as follows for our validation dataset df_val:
+
+```{r}
+compute_msm_probabilities <- function(model, data, treatment) {
+  
+  # get cumulative hazard fct from model
+  bh <- survival::basehaz(model, centered = FALSE)
+  cumhaz.fun <- stats::stepfun(bh$time, c(0, bh$hazard))
+  
+  # extract baseline covariates from data
+  pred_under_int <- data[, c("id", "L0", "P")]
+  
+  # create a row for each visit
+  pred_under_int <- pred_under_int[rep(1:nrow(data), rep(5, nrow(data))), ]
+  pred_under_int$visit_time <- rep(0:4, nrow(data))
+  pred_under_int$end_time <- pred_under_int$visit_time + 1
+
+  pred_under_int$A <- treatment
+  pred_under_int <- add_lag_terms(pred_under_int, "A", lag = 1:4)
+  
+  # compute the cumulative hazard contribution between each visit
+  pred_under_int <- within(pred_under_int, {
+    cumhaz_start <- cumhaz.fun(visit_time)
+    cumhaz_end <- cumhaz.fun(end_time)
+    lp <- predict(cox_msm, newdata = pred_under_int, type = "lp")
+    contribution <- (cumhaz_end - cumhaz_start) * exp(lp)
+  })
+  
+  # take the sum
+  cumhaz <- tapply(pred_under_int$contribution, pred_under_int$id, FUN = sum)
+  1 - exp(-cumhaz)
+}
+
+risk_under_0 <- compute_msm_probabilities(cox_msm, df_val, 0)
+risk_under_1 <- compute_msm_probabilities(cox_msm, df_val, 1)
+
+summary(risk_under_0)
+summary(risk_under_1)
+```
+
+We will proceed with evaluating these predictions in the [next vignette](predictions-under-longitudinal-interventions-evaluation.html). 
+

@@ -1,8 +1,8 @@
 ---
-title: "Longitudinal treatments and time dependent confounding"
+title: "Evaluating predictions under longitudinal interventions"
 output: rmarkdown::html_vignette
 vignette: >
-%\VignetteIndexEntry{Longitudinal treatments and time dependent confounding}
+%\VignetteIndexEntry{Evaluating predictions under longitudinal interventions}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
   ---
@@ -29,7 +29,6 @@ For more detail, read [Keogh and Van Geloven (2024)](https://doi.org/10.1097/EDE
 We first simulate data as in Figure 1, with 5 visits, time dependent confounder $L$ and treatment A. For development and validation. 
 
 ```{r}
-
 simulate_longitudinal_data <- function(n, n_visits = 5, visit_times = 0:4, seed) {
   set.seed(seed)
   
