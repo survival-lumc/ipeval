@@ -296,4 +296,8 @@ estimated, using `ip_score()`.
 A more detailed motivation is given in [this
 vignette](https://jvelumc.github.io/ipeval/articles/ipeval.html). How to
 use this package for survival data is given in [time-to-event
-vignette](https://jvelumc.github.io/ipeval/articles/time-to-event.html)
+vignette](https://jvelumc.github.io/ipeval/articles/time-to-event.html).
+In [this
+vignette](https://jvelumc.github.io/ipeval/articles/predictions-under-longitudinal-interventions-evaluation.html),
+we demonstrate usage for longitudinal treatments with time dependent
+confounding.
