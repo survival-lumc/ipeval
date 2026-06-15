@@ -1,8 +1,9 @@
 # ipeval (development version)
 
-* Refactored code to be more readable, reusable and slightly faster.
 * Added support for longitudinal treatments with time-dependent confounding.
-* Scaled brier can be computed without setting null_model = TRUE anyway.
+* Added support for categorical treatments.
+* Refactored code to be more readable, reusable and slightly faster.
+* various minor improvements.
 
 # ipeval 0.1.0
 
