@@ -39,7 +39,7 @@
 #' computed using a weighted Kaplan-Meier estimator, which would be more
 #' efficient, but computationally slower.
 #'
-#' Stabilized IPT-weigths can be computed by P(A = a) / P(A = a | L = l), if the
+#' Stabilized IPT-weigths can be computed by \eqn{\hat{P}}(A = a) / \eqn{\hat{P}}(A = a | L = l), if the
 #' given treatment_formula is A ~ L. In the setting that we consider here, the
 #' numerator of this expression is constant. The resulting performance metrics
 #' are therefore not impacted by multiplication of all weights with the same
@@ -48,7 +48,7 @@
 #' Bootstrapping is not possible when manually specifiying the IPTW/IPCW as
 #' numeric vectors. If specifying a user-defined function that computes the
 #' ITPW/IPCW given data, it is possible. The given function will be called on
-#' each bootstrapped dataset and resulting metrics are used to compute the 95%
+#' each bootstrapped dataset and resulting metrics are used to compute the 95\%
 #' CIs. More advanced techniques, such as thresholding extreme IP weights, can
 #' be implemented through a user-defined weight function. The censoring weight
 #' returned by this function should be the 1 / probability of remaining
@@ -105,7 +105,7 @@
 #' @param stable_iptw if TRUE, estimate stabilized IPT-weights. Does not
 #'   influence the metrics. See details.
 #' @param bootstrap If this is an integer greater than 0, this indicates the
-#'   number of bootstrap iterations, used to compute 95% confidence intervals
+#'   number of bootstrap iterations, used to compute 95\% confidence intervals
 #'   around the performance metrics.
 #' @param bootstrap_progress if set to TRUE, print a progress bar indicating the
 #'   progress of the bootstrap procedure.
@@ -128,12 +128,12 @@
 #' @returns An object of class `ip_score`, for which the `print()` and `plot()`
 #' methods are implemented. The object is a nested list containing: \itemize{
 #'   \item `$score`, contains the estimated predictive performance metrics.
-#'   \item `$bootstrap`, if requested, the 95% confidence intervals of the
+#'   \item `$bootstrap`, if requested, the 95\% confidence intervals of the
 #'   performance metrics, and the performance metrics for each individual
 #'   bootstrap iteration.
 #'   \item `$outcome`, the observed outcomes in data.
 #'   \item `$treatment`, the observed treatment levels in data.
-#'   \item `$predictions`, the predictions to be evaluated, i.e. the probability
+#'   \item `$predictions`, the predictions to be evaluated, i.e. the estimated probability
 #'   of event under the intervention of interest for each subject.
 #'   \item `$ipt`, method, model and inverse probability of treatment weights
 #'   (IPTW). These are NA for subjects who are not directly used in the
@@ -183,7 +183,7 @@
 
 ip_score <- function(object, data, outcome, treatment_formula,
                      treatment_of_interest,
-                     metrics = c("auc", "brier", "oeratio", "calplot"),
+                     metrics = c("auc", "brier", "scaled_brier", "oeratio", "calplot"),
                      time_horizon, cens_model = "KM", cens_formula = ~ 1,
                      null_model = TRUE, stable_iptw = FALSE,
                      bootstrap = 0, bootstrap_progress = TRUE,

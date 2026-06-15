@@ -30,7 +30,7 @@ Description: Provides methods to evaluate predictive performance of models that
     outcomes in the pseudo-population corresponding to that intervention. 
     Supports interventions with binary or categorical treatment levels, applied 
     either at a single time point or as longitudinal treatment strategies with 
-    repeated treatment decisions. Performance measures supported are AUC (Area 
+    sequential treatment decisions. Performance measures supported are AUC (Area 
     Under the receiving operating characteristic Curve), Brier score, 
     observed-expected ratio, and calibration plots. Methods implemented in this 
     package are based on work by Keogh and Van Geloven (2024) 
