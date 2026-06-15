@@ -45,8 +45,8 @@ Imports:
     nnet
 Depends: 
     R (>= 3.5)
-URL: https://jvelumc.github.io/ipeval/, https://github.com/jvelumc/ipeval
-BugReports: https://github.com/jvelumc/ipeval/issues
+URL: https://github.com/survival-lumc/ipeval, https://survival-lumc.github.io/ipeval/
+BugReports: https://github.com/survival-lumc/ipeval/issues
 Suggests: 
     knitr,
     rmarkdown,

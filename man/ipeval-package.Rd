@@ -11,9 +11,9 @@ Provides methods to evaluate predictive performance of models that estimate risk
 \seealso{
 Useful links:
 \itemize{
-  \item \url{https://jvelumc.github.io/ipeval/}
-  \item \url{https://github.com/jvelumc/ipeval}
-  \item Report bugs at \url{https://github.com/jvelumc/ipeval/issues}
+  \item \url{https://github.com/survival-lumc/ipeval}
+  \item \url{https://survival-lumc.github.io/ipeval/}
+  \item Report bugs at \url{https://github.com/survival-lumc/ipeval/issues}
 }
 
 }

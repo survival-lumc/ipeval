@@ -5,7 +5,7 @@
 
 [![CRAN
 status](https://www.r-pkg.org/badges/version/ipeval)](https://CRAN.R-project.org/package=ipeval)
-[![R-CMD-check](https://github.com/jvelumc/ipeval/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/jvelumc/ipeval/actions/workflows/R-CMD-check.yaml)
+[![R-CMD-check](https://github.com/survival-lumc/ipeval/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/survival-lumc/ipeval/actions/workflows/R-CMD-check.yaml)
 [![](https://cranlogs.r-pkg.org/badges/grand-total/ipeval)](https://cran.r-project.org/package=ipeval)
 <!-- badges: end -->
 
