@@ -152,6 +152,42 @@ test_that("supplying (list of) model or predictions equivalent", {
   )
 })
 
+test_that("survival outcome at fixed timepoint equivalent to binary outcome", {
+  # If we have a binary outcome which is measured for everyone at one fixed
+  # timepoint (i.e. t = 10), with no censoring, is specifying outcome = binary
+  # equivalent to outcome = Surv(time = 10, binary), time_horizon = 10?
+
+  n <- 10000
+  data <- data.frame(
+    L = rnorm(n, mean = 0),
+    P = rnorm(n, mean = 0)
+  )
+  data$A <- rbinom(n, 1, plogis(0.2+0.5*data$L))
+  data$Y0 <- rbinom(n, 1, plogis(0.1 + 0.3*data$L + 0.4*data$P))
+  data$Y1 <- rbinom(n, 1, plogis(0.1 + 0.3*data$L + 0.4*data$P - 0.4))
+  data$Y <- ifelse(data$A == 1, data$Y1, data$Y0)
+  data$time <- 10
+
+  model <- suppressWarnings(
+    glm(
+      Y ~ A + P,
+      family = "binomial",
+      data = data,
+      weights = ipt_weights(data, A ~ L)$weights
+    )
+  )
+
+  expect_equal(
+    ip_score(model, data, Y, A ~ L, 0)$score,
+    ip_score(model, data, Surv(time, Y), A ~ L, 0, time_horizon = 10)$score
+  )
+
+  expect_equal(
+    ip_score(model, data, Surv(time, Y), A ~ L, 0, time_horizon = 10)$ipc$weights,
+    rep(1, nrow(data))
+  )
+})
+
 test_that("iptw/ipcw manual specification equivalent to models", {
   n <- 1000
   horizon <- 10

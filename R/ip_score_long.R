@@ -162,7 +162,7 @@ add_lag_terms <- function(df, var, lag = 1, fill = 0) {
 #'remaining uncensored at the time horizon, or at their event time, whichever
 #'happens first.
 #'
-#'@param probabilities A numeric vector corresponding to the risk estimates
+#'@param predictions A numeric vector corresponding to the risk estimates
 #'  under evaluation, or a (named) list of multiple numeric vectors for
 #'  evaluating and comparing multiple vectors.
 #'@param data_outcome A dataframe containing the observed outcomes. It must
@@ -193,9 +193,11 @@ add_lag_terms <- function(df, var, lag = 1, fill = 0) {
 #'@param metrics A character vector specifying which performance metrics to be
 #'  computed. Options are c("auc", "brier", “scaled_brier”, "oeratio",
 #'  "calplot").
-#'@param visit_times A numeric vector, indicating the times of the visits. The
-#'  first visit must always be at time 0.
-#'@param time_horizon the prediction horizon of interest.
+#'@param visit_times A numeric vector, indicating the times of the visits at
+#'  which sequential treatment decisions were made. The first visit must always
+#'  be at time 0.
+#'@param time_horizon the prediction horizon of interest. Should be after the
+#'  last visit.
 #'@param cens_model Model for estimating inverse probability of censored weights
 #'  (IPCW). Methods currently implemented are Kaplan-Meier ("KM") or Cox
 #'  ("cox"), with censoring times derived from the time,status variables in
@@ -269,13 +271,15 @@ add_lag_terms <- function(df, var, lag = 1, fill = 0) {
 #' n <- 1000
 #' data <- data.frame(id = 1:n)
 #'
+#' # 2 visits at t = 0 and t = 2. Time dependent confounding between A and L
+#' # Generate random survival times between 0 and 6 as an example. It's a lot
+#' # of effort to simulate survival outcomes dependent on time dependent L and A
+#' # (see simulating-data vignette)
 #' data <- within(data, {
-#'   # 2 visits at t = 0 and t = 2. Time dependent confounding between A and L
 #'   L0 <- rnorm(n)
 #'   A0 <- rbinom(n, 1, plogis(0.7*L0))
 #'   L1 <- rnorm(n, 0.8*L0 - 0.2*A0)
 #'   A1 <- rbinom(n, 1, plogis(0.7*L1 + 0.6*A0))
-#'   # Quickly generate random survival times as an example
 #'   time <- runif(n, 0, 6)
 #'   status <- rbinom(n, 1, 0.5)
 #' })
@@ -313,7 +317,7 @@ add_lag_terms <- function(df, var, lag = 1, fill = 0) {
 #' # Estimate performance of random predictions in a pseudopopulation in
 #' # which everybody was assigned treatment strategy {0, 0}
 #' ip_score_long(
-#'   probabilities = random_model,
+#'   predictions = random_model,
 #'   data_outcome = data_outcome,
 #'   data_long = data_long,
 #'   treatment_formula = A ~ L + A_lag_1,
@@ -327,7 +331,7 @@ add_lag_terms <- function(df, var, lag = 1, fill = 0) {
 #' # they would normally have after that (natural course) at visit 2, and modelling
 #' # the censoring distribution with Cox model
 #' ip_score_long(
-#'   probabilities = random_model,
+#'   predictions = random_model,
 #'   data_outcome = data_outcome,
 #'   data_long = data_long,
 #'   treatment_formula = A ~ L + A_lag_1,
@@ -337,7 +341,7 @@ add_lag_terms <- function(df, var, lag = 1, fill = 0) {
 #'   cens_model = "cox",
 #'   cens_formula = ~ A + A_lag_1 + L
 #' )
-ip_score_long <- function(probabilities, data_outcome, data_long,
+ip_score_long <- function(predictions, data_outcome, data_long,
                           treatment_formula, treatment_of_interest,
                           metrics = c("auc", "brier", "oeratio", "calplot"),
                           visit_times, time_horizon, cens_model = "KM",
@@ -347,7 +351,7 @@ ip_score_long <- function(probabilities, data_outcome, data_long,
                           strip_ipt_models = TRUE) {
   # checking inputs...
 
-  check_missing(probabilities)
+  check_missing(predictions)
   check_missing(data_outcome)
   check_missing(data_long)
   check_missing(treatment_formula)
@@ -426,8 +430,8 @@ ip_score_long <- function(probabilities, data_outcome, data_long,
   score_treatment <- extract_treatment(data_flat, treatment_formula, TRUE)
   score_pseudopop <- get_pseudopop(score_outcome, score_treatment)
 
-  probabilities <- make_named_list(probabilities, substitute(probabilities))
-  score_predictions <- get_predictions(probabilities, data_flat)
+  predictions <- make_named_list(predictions, substitute(predictions))
+  score_predictions <- get_predictions(predictions, data_flat)
 
   # compute IPT/IPC weights. This is done on the longitudinal data. Weights
   # are combined as products to get 1 weight per patient, which represents

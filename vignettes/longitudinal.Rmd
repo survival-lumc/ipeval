@@ -19,20 +19,20 @@ library(ipeval)
 library(survival)
 ```
 
-This vignette demonstrates how to evaluate risk predictions under longitudinal treatment strategies in the presence of time-dependent confounding.
+This vignette demonstrates how to evaluate predictions under longitudinal treatment strategies in the presence of time-dependent confounding.
 
-For more detail, read [Keogh and Van Geloven (2024)](https://doi.org/10.1097/EDE.0000000000001713), from which the methods in this package are implemented.
+For more detail, see [Keogh and Van Geloven (2024)](https://doi.org/10.1097/EDE.0000000000001713), from which the methods in this package are implemented.
 
-We assume that a validation dataset is available, together with risk predictions corresponding to one or more treatment strategies. Throughout this vignette, we use data generated from the causal structure shown below.
+We assume that an evaluation dataset (df_val) is available, as well as risk estimates corresponding to one or more treatment strategies. Throughout this vignette, we use data generated from the causal structure shown below.
 
 ![](dag-timedep.png)
 
-Suppose we have predicted risks under two intervention strategies:
+Suppose we have estimated risks under two intervention strategies:
 
-* Never treated: treatment is set to 0 at every visit.
-* Always treated: treatment is set to 1 at every visit.
+* Never treat: treatment is set to 0 at every visit (risk_under_0).
+* Always treat: treatment is set to 1 at every visit (risk_under_1).
 
-In [the previous vignette](longitudinal-data-and-cox-models.html), we show how these predictions can be obtained from a marginal structural Cox model (and how such longitidunial data could be generated). Here, we focus on evaluating those predictions.
+In [the previous vignette](longitudinal-data-and-cox-models.html), we show how such predictions can be obtained from a marginal structural Cox model (and how longitidunial data could be simulated). Here, we focus on evaluating those predictions.
 
 ```{r, include=FALSE}
 
@@ -62,9 +62,9 @@ simulate_longitudinal_data <- function(n, n_visits = 5, visit_times = 0:4, seed)
       rbinom(n, 1, plogis(0.5 * L[, i] + 0.8 * A[, i - 1]))
     }
     
-    # To simulate survival times with these time varying variables, we simulate a
+    # To simulate outcome data (survival time + status) with these time varying variables, we simulate a
     # survival time at the first visit, using the corresponding values of A and L
-    # at that visit. If subject survived until after the next visit, we simulate
+    # at that visit. If subject survived until the next visit, we simulate
     # another survival time, this time using the new values of A and L, etc until
     # there is an event before the next visit. After the last visit, we just take
     # the last simulated survival time. 
@@ -128,6 +128,7 @@ df_dev_long$time_end <- ifelse(
   df_dev_long$time,
   pmin(df_dev_long$visit_time + 1, df_dev_long$time)
 )
+# We can use visit_time + 1 here because all visits are spaced 1 time apart
 
 df_dev_long$status <- ifelse(
   df_dev_long$time_end == df_dev_long$time,
@@ -198,14 +199,14 @@ summary(risk_under_0)
 summary(risk_under_1)
 ```
 
-We will use the `ip_score_long()` function, which evaluates risk predictions under longitudinal interventions using inverse-probability weighting. It requires:
-- an outcome dataset with one row per subject, with survival time and status,
-- a longitudinal dataset with one row per subject and visit,
-- a model describing the treatment assignment mechanism.
+We will use the `ip_score_long()` function, which evaluates risk estimates under longitudinal interventions using inverse-probability weighting. It requires:
+* an outcome dataset with one row per subject, with survival time and status,
+* a dataset in long format, containing data on observed treatment and covariates, with one row per subject and visit,
+* a model describing the treatment assignment mechanism.
 
-The longitudinal dataset must contain all variables used in the treatment model. In our example, treatment depends on the current confounder value L and the previous treatment value, so the variables L, A, and A_lag_1 are required.
+The long dataset must include all variables used in the treatment model. In our example, treatment is assumed to depend on the value of L at the current visit and the treatment value at the previous visit, so the variables L, A, and A_lag_1 are required.
 
-This package provides some convenience functions to reshape your data in this way.
+This package provides the convenience functions `wide_to_long()` and `add_lag_terms()` to help reshape your data in this way.
 
 ```{r}
 df_val_outcome <- df_val[, c("id", "time", "status")]
@@ -217,9 +218,9 @@ df_val_long <- add_lag_terms(df_val_long, "A")
 head(df_val_long)
 ```
 
-Assuming independent censoring, we can evaluate the predictions under the never-treated strategy as follows:
+We can use the function `ip_score_long()` to evaluate the predictions under the never-treat strategy as follows:
 
-```{r, fig.dim=c(5,5)}
+```{r}
 ip_score_long(
   probabilities = risk_under_0,
   data_outcome = df_val_outcome,
@@ -233,7 +234,7 @@ ip_score_long(
 
 The same procedure can be used for the always-treated strategy:
 
-```{r, fig.dim=c(5,5)}
+```{r}
 ip_score_long(
   probabilities = risk_under_1,
   data_outcome = df_val_outcome,
@@ -245,9 +246,9 @@ ip_score_long(
 )
 ```
 
-# Arbitrary treatment patterns
+# Other treatment patterns
 
-The treatment strategy does not need to be "always" or "never" treated. For example, the following strategy specifies treatment at the first two visits and leaves subsequent treatment unconstrained:
+The treatment strategy does not need to be "always" or "never" treat. For example, the following strategy specifies treatment at the first two visits and leaves subsequent treatment unconstrained:
 
 ```{r}
 ip_score_long(
@@ -264,7 +265,7 @@ ip_score_long(
 
 # Censoring dependent on time varying variables
 
-In the previous examples, we did not specify the censoring mechanism. By default, this is done with Kaplan-Meier. It is also possible to specify a Cox censoring model with time varying variables. These variables should then be available as columns in ```data_long```. As a demonstration, this can be achieved as follows:
+In the previous examples, we did not specify the censoring mechanism. By default, the censoring mechanism is assumed to be (marginally) independent and the censoring weights are estimating using Kaplan-Meier. It is also possible to specify a Cox censoring model where censoring may depent on (time-varying) covariates. These variables should then be available as columns in ```data_long```. As a demonstration, this can be achieved as follows:
 
 ```{r}
 ip_score_long(
@@ -281,5 +282,5 @@ ip_score_long(
 )
 ```
 
-Note that the coefficients of the IPC model are close to 0. This is expected as we simulated independent censoring.
+Note that the coefficients of the censoring model are estimated close to 0. This is expected as we simulated the data assuming a (marginally) independent censoring process.
 

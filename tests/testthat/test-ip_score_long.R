@@ -25,7 +25,7 @@ test_that("ipscore long with 1 visit is equivalent to ip_score()", {
   # kaplan meier censoring
   expect_equal(
     ip_score_long(
-      probabilities = list(risk_0, randomrisks),
+      predictions = list(risk_0, randomrisks),
       data_outcome = df_val_outcome,
       data_long = df_val_long,
       treatment_formula = A ~ L,
@@ -46,7 +46,7 @@ test_that("ipscore long with 1 visit is equivalent to ip_score()", {
   # cox censoring
   expect_equal(
     ip_score_long(
-      probabilities = list(risk_0, randomrisks),
+      predictions = list(risk_0, randomrisks),
       data_outcome = df_val_outcome,
       data_long = df_val_long,
       treatment_formula = A ~ L,
@@ -113,7 +113,7 @@ test_that("ipscore long results vs CF dataset correct", {
                  always_truth_under_1, always_wrong_under_1)
 
   score0 <- ip_score_long(
-    probabilities = models,
+    predictions = models,
     data_outcome = df_val_outcome,
     data_long = df_val_long,
     visit_times = 0:4,
@@ -132,7 +132,7 @@ test_that("ipscore long results vs CF dataset correct", {
   )
 
   score1 <- ip_score_long(
-    probabilities = models,
+    predictions = models,
     data_outcome = df_val_outcome,
     data_long = df_val_long,
     visit_times = 0:4,
@@ -198,7 +198,7 @@ test_that("bootstrap long", {
                  always_0, always_1)
 
   score0 <- ip_score_long(
-    probabilities = models,
+    predictions = models,
     data_outcome = df_val_outcome,
     data_long = df_val_long,
     visit_times = 0:4,
@@ -257,7 +257,7 @@ test_that("ipscore long results vs CF dataset with KM censoring", {
   # 'counterfactual' truth. tell ip_score_long to use KM to estimate IPCW
 
   score0 <- ip_score_long(
-    probabilities = models,
+    predictions = models,
     data_outcome = df_val_outcome,
     data_long = df_val_long,
     visit_times = 0:4,
@@ -276,7 +276,7 @@ test_that("ipscore long results vs CF dataset with KM censoring", {
   # 'counterfactual' truth.
 
   score1 <- ip_score_long(
-    probabilities = models,
+    predictions = models,
     data_outcome = df_val_outcome,
     data_long = df_val_long,
     visit_times = 0:4,
@@ -294,7 +294,7 @@ test_that("ipscore long results vs CF dataset with KM censoring", {
 
   # Use Cox instead of KM to estimate the IPCW
 
-  score0cox <- ip_score_long(probabilities = models,
+  score0cox <- ip_score_long(predictions = models,
                              data_outcome = df_val_outcome,
                              data_long = df_val_long,
                              visit_times = 0:4,
@@ -307,7 +307,7 @@ test_that("ipscore long results vs CF dataset with KM censoring", {
   )
   expect_equal(score0cox$score, score0_true$score, tolerance = 0.01)
 
-  score1cox <- ip_score_long(probabilities = models,
+  score1cox <- ip_score_long(predictions = models,
                              data_outcome = df_val_outcome,
                              data_long = df_val_long,
                              visit_times = 0:4,
@@ -335,7 +335,7 @@ test_that("ipscore long results vs CF dataset with KM censoring", {
 
   df_val_inf_long <- add_lag_terms(df_val_inf_long, "A")
 
-  score0cox_informative <- ip_score_long(probabilities = models,
+  score0cox_informative <- ip_score_long(predictions = models,
                              data_outcome = df_val_inf_outcome,
                              data_long = df_val_inf_long,
                              visit_times = 0:4,
@@ -368,7 +368,7 @@ test_that("ipscore long results vs CF dataset with KM censoring", {
   # % censored before time horizon
   mean(df_val_inf2_outcome$time < 5 & df_val_inf2_outcome$status == 0)
 
-  score0cox_informative2 <- ip_score_long(probabilities = models,
+  score0cox_informative2 <- ip_score_long(predictions = models,
                                          data_outcome = df_val_inf2_outcome,
                                          data_long = df_val_inf2_long,
                                          visit_times = 0:4,
@@ -445,7 +445,7 @@ test_that("treatment of interest patterns with NA", {
                  always_truth_under_1, always_wrong_under_1)
 
   score0 <- ip_score_long(
-    probabilities = models,
+    predictions = models,
     data_outcome = df_val_outcome,
     data_long = df_val_long,
     visit_times = 0:4,
@@ -492,7 +492,7 @@ test_that("ip_score_long with manual specification of iptw/ipcw", {
   # 'counterfactual' truth. tell ip_score_long to use KM to estimate IPCW
 
   score0 <- ip_score_long(
-    probabilities = models,
+    predictions = models,
     data_outcome = df_val_outcome,
     data_long = df_val_long,
     visit_times = 0:4,
@@ -502,7 +502,7 @@ test_that("ip_score_long with manual specification of iptw/ipcw", {
   )
 
   score_manualiptw <- ip_score_long(
-    probabilities = models,
+    predictions = models,
     data_outcome = df_val_outcome,
     data_long = df_val_long,
     visit_times = 0:4,
@@ -512,7 +512,7 @@ test_that("ip_score_long with manual specification of iptw/ipcw", {
     iptw = score0$ipt$weights
   )
   score_manualiptwipcw <- ip_score_long(
-    probabilities = models,
+    predictions = models,
     data_outcome = df_val_outcome,
     data_long = df_val_long,
     visit_times = 0:4,
@@ -538,7 +538,7 @@ test_that("ip_score_long with manual specification of iptw/ipcw", {
   }
 
   score_functioniptw <- ip_score_long(
-    probabilities = models,
+    predictions = models,
     data_outcome = df_val_outcome,
     data_long = df_val_long,
     visit_times = 0:4,
@@ -1314,7 +1314,7 @@ test_that("ipscore long results vs validation under interventions paper", {
   dat.val_long <- add_lag_terms(dat.val_long, "A")
 
   ipscore_results_0 <- ip_score_long(
-    probabilities = risk0_exp[,5],
+    predictions = risk0_exp[,5],
     data_outcome = dat.val_outcome,
     data_long = dat.val_long,
     time_horizon = 5,
@@ -1326,7 +1326,7 @@ test_that("ipscore long results vs validation under interventions paper", {
   )
 
   ipscore_results_1 <- ip_score_long(
-    probabilities = risk1_exp[,5],
+    predictions = risk1_exp[,5],
     data_outcome = dat.val_outcome,
     data_long = dat.val_long,
     time_horizon = 5,
