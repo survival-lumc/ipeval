@@ -58,7 +58,7 @@
 #' )
 
 observed_score <- function(object, data, outcome,
-  metrics = c("auc", "brier", "oeratio", "calplot"),
+  metrics = c("auc", "brier", "scaled_brier", "oeratio", "calplot"),
   time_horizon, cens_model = "KM", cens_formula = ~ 1,
   null_model = TRUE, ipcw) {
 

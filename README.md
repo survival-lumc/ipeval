@@ -17,11 +17,14 @@ treatment weighting (IPTW) is used to construct a pseudopopulation in
 which all individuals receive a specified intervention, enabling
 assessment of agreement between predicted risks under the intervention
 and observed outcomes in the pseudo-population corresponding to that
-intervention. Supports binary and time-to-event outcomes under binary
-interventions made at a single time point. Performance measures
-supported are AUC, Brier score, observed-expected ratio, and calibration
-plots. Methods implemented in this package are based on work by [Keogh
-and Van Geloven (2024)](https://doi.org/10.1097/EDE.0000000000001713).
+intervention. Supports interventions with binary or categorical
+treatment levels, applied either at a single time point or as
+longitudinal treatment strategies with sequential treatment decisions.
+Performance measures supported are AUC (Area Under the receiving
+operating characteristic Curve), Brier score, observed-expected ratio,
+and calibration plots. Methods implemented in this package are based on
+work by [Keogh and Van Geloven
+(2024)](https://doi.org/10.1097/EDE.0000000000001713).
 
 ## Installation
 
@@ -198,11 +201,11 @@ ip_score(
 #> 
 #> Performance estimates:
 #> 
-#>         model   auc brier oeratio
-#>    null model 0.500 0.245    1.00
-#>        random 0.496 0.335    1.14
-#>   naive model 0.766 0.204    1.20
-#>  causal model 0.766 0.196    1.00
+#>         model   auc brier scaled_brier oeratio
+#>    null model 0.500 0.245          0.0    1.00
+#>        random 0.496 0.335        -36.3    1.14
+#>   naive model 0.766 0.204         17.1    1.20
+#>  causal model 0.766 0.196         20.3    1.00
 ```
 
 <img src="man/figures/README-unnamed-chunk-7-1.png" alt="" width="100%" />
@@ -223,11 +226,11 @@ ip_score(
   quiet = TRUE
 )
 #> 
-#>         model   auc brier oeratio
-#>    null model 0.500 0.241   1.000
-#>        random 0.533 0.314   0.812
-#>   naive model 0.739 0.218   0.751
-#>  causal model 0.739 0.202   0.930
+#>         model   auc brier scaled_brier oeratio
+#>    null model 0.500 0.241         0.00   1.000
+#>        random 0.533 0.314       -30.32   0.812
+#>   naive model 0.739 0.218         9.44   0.751
+#>  causal model 0.739 0.202        16.05   0.930
 ```
 
 <img src="man/figures/README-unnamed-chunk-8-1.png" alt="" width="100%" />

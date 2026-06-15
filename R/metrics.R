@@ -9,6 +9,7 @@ cf_metric <- function(metric, ...) {
   switch (metric,
     "brier" = cf_brier(...),
     "scaled_brier" = cf_brier_scaled(...),
+    "brier_scaled" = cf_brier_scaled(...),
     "auc" = cf_auc(...),
     "oeratio" = cf_oeratio(...),
     "calplot" = cf_calplot(...),
