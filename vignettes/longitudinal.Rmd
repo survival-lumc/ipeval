@@ -222,7 +222,7 @@ We can use the function `ip_score_long()` to evaluate the predictions under the 
 
 ```{r}
 ip_score_long(
-  probabilities = risk_under_0,
+  predictions = risk_under_0,
   data_outcome = df_val_outcome,
   data_long = df_val_long,
   treatment_formula = A ~ A_lag_1 + L,
@@ -236,7 +236,7 @@ The same procedure can be used for the always-treated strategy:
 
 ```{r}
 ip_score_long(
-  probabilities = risk_under_1,
+  predictions = risk_under_1,
   data_outcome = df_val_outcome,
   data_long = df_val_long,
   treatment_formula = A ~ A_lag_1 + L,
@@ -252,7 +252,7 @@ The treatment strategy does not need to be "always" or "never" treat. For exampl
 
 ```{r}
 ip_score_long(
-  probabilities = risk_under_0,
+  predictions = risk_under_0,
   data_outcome = df_val_outcome,
   data_long = df_val_long,
   treatment_formula = A ~ A_lag_1 + L,
@@ -269,7 +269,7 @@ In the previous examples, we did not specify the censoring mechanism. By default
 
 ```{r}
 ip_score_long(
-  probabilities = risk_under_1,
+  predictions = risk_under_1,
   data_outcome = df_val_outcome,
   data_long = df_val_long,
   treatment_formula = A ~ A_lag_1 + L,
