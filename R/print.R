@@ -149,6 +149,12 @@ assumptions <- function(x) {
     level <- "level"
   }
 
+  if ("ip_score_long" %in% class(x)) {
+    received <- "were compliant to"
+  } else {
+    received <- "received"
+  }
+
 
   if (!grepl("*", trt_val, fixed = TRUE)) {
     pp("Estimation of the performance of the prediction model in a pseudopopulation
@@ -162,14 +168,14 @@ assumptions <- function(x) {
   if (x$outcome$type == "binary") {
     pp("The pseudopopulation is constructed from ", sum(pp),
        " (", round(mean(pp)*100,1),
-       "%) subjects ($pseudopop) in data who indeed received treatment ", level, " ", trt_val,
+       "%) subjects ($pseudopop) in data who indeed ", received, " treatment ", level, " ", trt_val,
        ". These subjects are reweighted to represent the full target population
        under a hypothetical intervention in which everyone received this
        treatment ", level, ".")
   } else {
     pp("The pseudopopulation  is constructed from ", sum(pp),
        " (", round(mean(pp)*100,1),
-       "%) subjects ($pseudopop) in data who indeed received treatment ", level, " ", trt_val,
+       "%) subjects ($pseudopop) in data who indeed ", received, " treatment ", level, " ", trt_val,
        " and remained uncensored till time=", horizon,
        ". These subjects are reweighted to represent the full target population
        under a hypothetical intervention in which everyone received this

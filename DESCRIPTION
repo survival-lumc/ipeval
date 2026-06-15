@@ -1,6 +1,6 @@
 Package: ipeval
 Type: Package
-Title: Evaluation of Interventional Predictions 
+Title: Interventional Prediction Evaluation 
 Version: 0.1.0.9000
 Authors@R: c(
     person(
