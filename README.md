@@ -29,7 +29,7 @@ work by [Keogh and Van Geloven
 ## Installation
 
 ipeval can be installed from
-[CRAN](https://cran.r-project.org/web/packages/ipeval/index.html) with:
+[CRAN](https://CRAN.R-project.org/package=ipeval) with:
 
 ``` r
 install.packages("ipeval")
