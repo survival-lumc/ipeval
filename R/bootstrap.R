@@ -59,7 +59,7 @@ bootstrap_iteration_long <- function(ip_object, matchcall, call_env) {
   # rerun the call with bootstrapped data & predictions
   the_call$data_outcome <- quote(bs_data_outcome)
   the_call$data_long <- quote(bs_data_long)
-  the_call$probabilities <- quote(bs_predictions)
+  the_call$predictions <- quote(bs_predictions)
   the_call$bootstrap <- 0
   the_call$null_model <- FALSE
   the_call$strip_ipt_models <- TRUE

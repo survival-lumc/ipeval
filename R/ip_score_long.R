@@ -306,7 +306,9 @@ add_lag_terms <- function(df, var, lag = 1, fill = 0) {
 #'   visit_times = c(0,2),
 #'   outcome_times = data$time
 #' )
-#' data_long <- add_lag_terms(data_long, "A")
+#' # adding treatment level at previous visit time to the data. For the first
+#' # visit this is assumed to be 0 (fill)
+#' data_long <- add_lag_terms(data_long, var = "A", lag = 1, fill = 0)
 #'
 #' head(data_long)
 #' # note that the measurements that were generated after survival time have been

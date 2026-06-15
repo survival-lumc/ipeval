@@ -5,7 +5,7 @@
 \title{Interventional prediction score for longitudinal treatment strategies}
 \usage{
 ip_score_long(
-  probabilities,
+  predictions,
   data_outcome,
   data_long,
   treatment_formula,
@@ -25,7 +25,7 @@ ip_score_long(
 )
 }
 \arguments{
-\item{probabilities}{A numeric vector corresponding to the risk estimates
+\item{predictions}{A numeric vector corresponding to the risk estimates
 under evaluation, or a (named) list of multiple numeric vectors for
 evaluating and comparing multiple vectors.}
 
@@ -62,11 +62,12 @@ visit. See details.}
 computed. Options are c("auc", "brier", “scaled_brier”, "oeratio",
 "calplot").}
 
-\item{visit_times}{A numeric vector, indicating the times of the visits. The
-first visit must always be at time 0. Should have the same length as
-`treatment_of_interest`.}
+\item{visit_times}{A numeric vector, indicating the times of the visits at
+which sequential treatment decisions were made. The first visit must always
+be at time 0.}
 
-\item{time_horizon}{the prediction horizon of interest.}
+\item{time_horizon}{the prediction horizon of interest. Should be after the
+last visit.}
 
 \item{cens_model}{Model for estimating inverse probability of censored weights
 (IPCW). Methods currently implemented are Kaplan-Meier ("KM") or Cox
@@ -185,13 +186,15 @@ set.seed(5)
 n <- 1000
 data <- data.frame(id = 1:n)
 
+# 2 visits at t = 0 and t = 2. Time dependent confounding between A and L
+# Generate random survival times between 0 and 6 as an example. It's a lot
+# of effort to simulate survival outcomes dependent on time dependent L and A
+# (see simulating-data vignette)
 data <- within(data, {
-  # 2 visits at t = 0 and t = 2. Time dependent confounding between A and L
   L0 <- rnorm(n)
   A0 <- rbinom(n, 1, plogis(0.7*L0))
   L1 <- rnorm(n, 0.8*L0 - 0.2*A0)
   A1 <- rbinom(n, 1, plogis(0.7*L1 + 0.6*A0))
-  # Quickly generate random survival times as an example
   time <- runif(n, 0, 6)
   status <- rbinom(n, 1, 0.5)
 })
@@ -212,7 +215,9 @@ data_long <- wide_to_long(
   visit_times = c(0,2),
   outcome_times = data$time
 )
-data_long <- add_lag_terms(data_long, "A")
+# adding treatment level at previous visit time to the data. For the first
+# visit this is assumed to be 0 (fill)
+data_long <- add_lag_terms(data_long, var = "A", lag = 1, fill = 0)
 
 head(data_long)
 # note that the measurements that were generated after survival time have been
@@ -229,7 +234,7 @@ random_model <- runif(n, min = 0.2, max = 0.8)
 # Estimate performance of random predictions in a pseudopopulation in
 # which everybody was assigned treatment strategy {0, 0}
 ip_score_long(
-  probabilities = random_model,
+  predictions = random_model,
   data_outcome = data_outcome,
   data_long = data_long,
   treatment_formula = A ~ L + A_lag_1,
@@ -243,7 +248,7 @@ ip_score_long(
 # they would normally have after that (natural course) at visit 2, and modelling
 # the censoring distribution with Cox model
 ip_score_long(
-  probabilities = random_model,
+  predictions = random_model,
   data_outcome = data_outcome,
   data_long = data_long,
   treatment_formula = A ~ L + A_lag_1,
