@@ -40,7 +40,7 @@ The development version of ipeval can be installed from
 
 ``` r
 # install.packages("devtools")
-devtools::install_github("jvelumc/ipeval")
+devtools::install_github("survival-lumc/ipeval")
 ```
 
 ``` r
@@ -297,10 +297,10 @@ estimated, using `ip_score()`.
 ## Further reading
 
 A more detailed motivation is given in [this
-vignette](https://jvelumc.github.io/ipeval/articles/ipeval.html). How to
-use this package for survival data is given in [time-to-event
-vignette](https://jvelumc.github.io/ipeval/articles/time-to-event.html).
+vignette](https://survival-lumc.github.io/ipeval/articles/ipeval.html).
+How to use this package for survival data is given in [time-to-event
+vignette](https://survival-lumc.github.io/ipeval/articles/time-to-event.html).
 In [this
-vignette](https://jvelumc.github.io/ipeval/articles/longitudinal.html),
+vignette](https://survival-lumc.github.io/ipeval/articles/longitudinal.html),
 we demonstrate usage for longitudinal treatments with time dependent
 confounding.
