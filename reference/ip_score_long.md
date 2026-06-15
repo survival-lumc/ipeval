@@ -255,7 +255,7 @@ data <- data.frame(id = 1:n)
 
 # 2 visits at t = 0 and t = 2. Time dependent confounding between A and L
 # Here we generate random survival times between 0 and 6 as an example.
-# See simulating-data vignette for another example where survival outcomes
+# See generating longitudinal data vignette for another example where survival outcomes
 # depend on time dependent  L and A.
 data <- within(data, {
   L0 <- rnorm(n)
