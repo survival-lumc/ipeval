@@ -4,7 +4,7 @@ This vignette shows how to simulate longitudinal data with
 time-dependent confounding, fit a marginal structural Cox model (MSM),
 and obtain risk estimates under longitudinal treatment strategies. The
 resulting evaluation data and predictions are used in the [next
-vignette](https://survival-lumc.github.io/ipeval/articles/predictions-under-longitudinal-interventions-evaluation.md).
+vignette](https://survival-lumc.github.io/ipeval/articles/longitudinal.md).
 
 The data-generating mechanism is adapted from [Keogh and Van Geloven
 (2024)](https://doi.org/10.1097/EDE.0000000000001713) and follows the
@@ -308,4 +308,4 @@ summary(risk_under_1)
 ```
 
 We will proceed with evaluating these predictions in the [next
-vignette](https://survival-lumc.github.io/ipeval/articles/predictions-under-longitudinal-interventions-evaluation.md).
+vignette](https://survival-lumc.github.io/ipeval/articles/longitudinal.md).
