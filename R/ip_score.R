@@ -191,6 +191,7 @@ ip_score <- function(object, data, outcome, treatment_formula,
 
   # checking inputs ---------------------------------------------------------
 
+
   check_missing(object)
   check_missing(data)
   check_missing(outcome)
