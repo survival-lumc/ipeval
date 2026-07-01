@@ -63,7 +63,6 @@ every subject was assigned the treatment level of interest.</p>
 <span>  cens_model <span class="op">=</span> <span class="st">"KM"</span>,</span>
 <span>  cens_formula <span class="op">=</span> <span class="op">~</span><span class="fl">1</span>,</span>
 <span>  null_model <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  stable_iptw <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  bootstrap <span class="op">=</span> <span class="fl">0</span>,</span>
 <span>  bootstrap_progress <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  <span class="va">iptw</span>,</span>
@@ -150,11 +149,6 @@ using the treatment_formula or as given by the iptw argument). For
 time-to-event outcomes, the subjects are also 'counterfactually' uncensored
 (using the IPCW, as estimated using the cens_formula, or as given by the
 ipcw argument). The null_model can be used as reference (baseline) model.</p></dd>
-
-
-<dt id="arg-stable-iptw">stable_iptw<a class="anchor" aria-label="anchor" href="#arg-stable-iptw"></a></dt>
-<dd><p>if TRUE, estimate stabilized IPT-weights. Does not
-influence the metrics. See details.</p></dd>
 
 
 <dt id="arg-bootstrap">bootstrap<a class="anchor" aria-label="anchor" href="#arg-bootstrap"></a></dt>
@@ -250,11 +244,6 @@ censoring times before fitting the censoring model.</p>
 pseudopopulation. For survival data, this null prediction could also be
 computed using a weighted Kaplan-Meier estimator, which would be more
 efficient, but computationally slower.</p>
-<p>Stabilized IPT-weigths can be computed by \(\hat{P}\)(A = a) / \(\hat{P}\)(A = a | L = l), if the
-given treatment_formula is A ~ L. In the setting that we consider here, the
-numerator of this expression is constant. The resulting performance metrics
-are therefore not impacted by multiplication of all weights with the same
-constant.</p>
 <p>Bootstrapping is not possible when manually specifiying the IPTW/IPCW as
 numeric vectors. If specifying a user-defined function that computes the
 ITPW/IPCW given data, it is possible. The given function will be called on

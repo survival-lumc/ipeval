@@ -332,10 +332,9 @@ options, the causal model outperforms the naive model in predicting the
 counterfactual outcome that we would observe if we were to set every
 patients treatment to the corresponding treatment.
 
-Other functions of the package include support for stabilized
-ipt-weights and bootstrapping for confidence intervals. Survival models
-such as Cox models can also be validated on right censored survival
-data.
+Other functions of the package include support for bootstrapping for
+confidence intervals. Survival models such as Cox models can also be
+validated on right censored survival data.
 
 ## Discussion
 
