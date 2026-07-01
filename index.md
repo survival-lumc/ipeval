@@ -254,9 +254,9 @@ exactly the same way.
 
 The function
 [`ip_score()`](https://survival-lumc.github.io/ipeval/reference/ip_score.md)
-also supports stabilized weights and bootstrapping for confidence
-intervals around performance measures. Right censored survival data and
-cox models are also supported.
+also supports bootstrapping for confidence intervals around performance
+measures. Right censored survival data and cox models are also
+supported.
 
 ## Traditional validation
 

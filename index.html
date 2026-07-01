@@ -191,7 +191,7 @@ Figure 1. DAG for toy example
 <span><span class="co">#&gt;  causal model 0.739 0.202        16.05   0.930</span></span></code></pre></div>
 <p><img src="reference/figures/README-unnamed-chunk-8-1.png" alt="" width="100%"></p>
 <p>The causal model has better calibration and Brier score compared to the naive model under both treatment settings. Note that the AUC of the naive model and the causal model are equal. AUC is driven entirely by how individuals’ model predictions are ranked, not by the magnitude of the predictions. In this simple setting, P is the only variable driving prognostic differences between individuals (in a pseudopopulation where we counterfactually set everyone’s treatment status to <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0</mn><annotation encoding="application/x-tex">0</annotation></semantics></math>). While the models have different coefficients for P, individuals are ranked in exactly the same way.</p>
-<p>The function <code><a href="reference/ip_score.html">ip_score()</a></code> also supports stabilized weights and bootstrapping for confidence intervals around performance measures. Right censored survival data and cox models are also supported.</p>
+<p>The function <code><a href="reference/ip_score.html">ip_score()</a></code> also supports bootstrapping for confidence intervals around performance measures. Right censored survival data and cox models are also supported.</p>
 </div>
 <div class="section level2">
 <h2 id="traditional-validation">Traditional validation<a class="anchor" aria-label="anchor" href="#traditional-validation"></a>
