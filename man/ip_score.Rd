@@ -15,7 +15,6 @@ ip_score(
   cens_model = "KM",
   cens_formula = ~1,
   null_model = TRUE,
-  stable_iptw = FALSE,
   bootstrap = 0,
   bootstrap_progress = TRUE,
   iptw,
@@ -81,9 +80,6 @@ using the treatment_formula or as given by the iptw argument). For
 time-to-event outcomes, the subjects are also 'counterfactually' uncensored
 (using the IPCW, as estimated using the cens_formula, or as given by the
 ipcw argument). The null_model can be used as reference (baseline) model.}
-
-\item{stable_iptw}{if TRUE, estimate stabilized IPT-weights. Does not
-influence the metrics. See details.}
 
 \item{bootstrap}{If this is an integer greater than 0, this indicates the
 number of bootstrap iterations, used to compute 95\% confidence intervals
@@ -174,12 +170,6 @@ The null model is computed by the weighted mean outcome in the
 pseudopopulation. For survival data, this null prediction could also be
 computed using a weighted Kaplan-Meier estimator, which would be more
 efficient, but computationally slower.
-
-Stabilized IPT-weigths can be computed by \eqn{\hat{P}}(A = a) / \eqn{\hat{P}}(A = a | L = l), if the
-given treatment_formula is A ~ L. In the setting that we consider here, the
-numerator of this expression is constant. The resulting performance metrics
-are therefore not impacted by multiplication of all weights with the same
-constant.
 
 Bootstrapping is not possible when manually specifiying the IPTW/IPCW as
 numeric vectors. If specifying a user-defined function that computes the

@@ -39,12 +39,6 @@
 #' computed using a weighted Kaplan-Meier estimator, which would be more
 #' efficient, but computationally slower.
 #'
-#' Stabilized IPT-weigths can be computed by \eqn{\hat{P}}(A = a) / \eqn{\hat{P}}(A = a | L = l), if the
-#' given treatment_formula is A ~ L. In the setting that we consider here, the
-#' numerator of this expression is constant. The resulting performance metrics
-#' are therefore not impacted by multiplication of all weights with the same
-#' constant.
-#'
 #' Bootstrapping is not possible when manually specifiying the IPTW/IPCW as
 #' numeric vectors. If specifying a user-defined function that computes the
 #' ITPW/IPCW given data, it is possible. The given function will be called on
@@ -102,8 +96,6 @@
 #'   time-to-event outcomes, the subjects are also 'counterfactually' uncensored
 #'   (using the IPCW, as estimated using the cens_formula, or as given by the
 #'   ipcw argument). The null_model can be used as reference (baseline) model.
-#' @param stable_iptw if TRUE, estimate stabilized IPT-weights. Does not
-#'   influence the metrics. See details.
 #' @param bootstrap If this is an integer greater than 0, this indicates the
 #'   number of bootstrap iterations, used to compute 95\% confidence intervals
 #'   around the performance metrics.
@@ -185,7 +177,7 @@ ip_score <- function(object, data, outcome, treatment_formula,
                      treatment_of_interest,
                      metrics = c("auc", "brier", "scaled_brier", "oeratio", "calplot"),
                      time_horizon, cens_model = "KM", cens_formula = ~ 1,
-                     null_model = TRUE, stable_iptw = FALSE,
+                     null_model = TRUE,
                      bootstrap = 0, bootstrap_progress = TRUE,
                      iptw, ipcw, quiet = FALSE, strip_ipt_models = TRUE) {
 
@@ -232,7 +224,6 @@ ip_score <- function(object, data, outcome, treatment_formula,
     data = data,
     score_treatment = score_treatment,
     iptw = iptw,
-    stable_iptw = stable_iptw,
     strip_model = strip_ipt_models
   )
 
@@ -300,7 +291,7 @@ handle_specified_ip <- function(iptcw, data, type = "iptw") {
 
 }
 
-get_iptw <- function(data, score_treatment, iptw, stable_iptw,
+get_iptw <- function(data, score_treatment, iptw,
                      only_weights = FALSE, strip_model = TRUE) {
   ipt <- list()
   # if user specified weights themselves:
@@ -325,20 +316,6 @@ get_iptw <- function(data, score_treatment, iptw, stable_iptw,
     ipt$method <- iptw_object$method
     iptw <- iptw_object$weights
 
-    if (stable_iptw) {
-      ipt$method <- paste0("stabilized ", ipt$method)
-      stable_treatment_formula <-
-        stats::update.formula(trt_form, . ~ 1)
-      siptw_object <- ipt_weights(
-        data = data,
-        propensity_formula = stable_treatment_formula,
-        treatment_of_interest = score_treatment$treatment_of_interest,
-        type = score_treatment$type,
-        strip_model = strip_model
-      )
-      iptw <- 1/siptw_object$weights * iptw
-      ipt$stable_model <- siptw_object$model
-    }
   }
   ipt$weights <- as.vector(iptw)
   if (only_weights == TRUE) {

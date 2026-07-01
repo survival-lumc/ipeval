@@ -159,7 +159,7 @@ ip_score(
 
 From these performance metrics it can be seen that for both treatment options, the causal model outperforms the naive model in predicting the counterfactual outcome that we would observe if we were to set every patients treatment to the corresponding treatment. 
 
-Other functions of the package include support for stabilized ipt-weights and bootstrapping for confidence intervals. Survival models such as Cox models can also be validated on right censored survival data.
+Other functions of the package include support for bootstrapping for confidence intervals. Survival models such as Cox models can also be validated on right censored survival data.
 
 # Discussion
 In standard validation, the naive prediction model appeared to perform better, while the causal model demonstrated superior performance when evaluated under counterfactual scenarios. Relying solely on standard validation could lead to the erroneous conclusion that the naive model is preferable for decision support. According to the naive model, nobody should receive treatment, as it predicts higher risk under treatment (setting $a$ to 1) than under no treatment (setting a to 0).

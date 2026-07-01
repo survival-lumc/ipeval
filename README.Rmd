@@ -125,7 +125,7 @@ ip_score(
 
 The causal model has better calibration and Brier score compared to the naive model under both treatment settings. Note that the AUC of the naive model and the causal model are equal. AUC is driven entirely by how individuals' model predictions are ranked, not by the magnitude of the predictions. In this simple setting, P is the only variable driving prognostic differences between individuals (in a pseudopopulation where we counterfactually set everyone's treatment status to $0$). While the models have different coefficients for P, individuals are ranked in exactly the same way.
 
-The function ```ip_score()``` also supports stabilized weights and bootstrapping for confidence intervals around performance measures. Right censored survival data and cox models are also supported.
+The function ```ip_score()``` also supports bootstrapping for confidence intervals around performance measures. Right censored survival data and cox models are also supported.
 
 ## Traditional validation
 

@@ -537,7 +537,7 @@ get_iptw_long <- function(data_long, score_treatment, treatment_of_interest,
   }
   # if not:
 
-  ipt_visit <- get_iptw(data_long, score_treatment, stable_iptw = FALSE,
+  ipt_visit <- get_iptw(data_long, score_treatment,
                         only_weights = FALSE, strip_model = strip_model)
 
   # set NA when deviating from trt of interest, and set 1 when trt of interest

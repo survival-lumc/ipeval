@@ -79,7 +79,6 @@ observed_score <- function(object, data, outcome,
   cl$data <- data2
   cl$treatment_formula <- quote(ipscore_fake_trt ~ 1)
   cl$treatment_of_interest <- 1
-  cl$stable_iptw <- FALSE
   cl$iptw <- rep(1, nrow(data))
 
   observed_score <- eval.parent(cl)

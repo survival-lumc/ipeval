@@ -246,14 +246,6 @@ assumptions <- function(x) {
 
   }
 
-  if (grepl("stabilized", x$ipt$method)) {
-
-    pp("* Stabilized weights were used. See also $ipt$stable_model.
-      Pseudopopulation weights ($ipt$weights) are the probability of
-      treatment from $ipt$stable_model divided by probability of treatment
-         from $ipt$model.")
-  }
-
   if (x$outcome$type == "survival") {
 
     switch(x$ipc$method,
