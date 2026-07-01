@@ -245,9 +245,9 @@ we counterfactually set everyone’s treatment status to $0$). While the
 models have different coefficients for P, individuals are ranked in
 exactly the same way.
 
-The function `ip_score()` also supports stabilized weights and
-bootstrapping for confidence intervals around performance measures.
-Right censored survival data and cox models are also supported.
+The function `ip_score()` also supports bootstrapping for confidence
+intervals around performance measures. Right censored survival data and
+cox models are also supported.
 
 ## Traditional validation
 
