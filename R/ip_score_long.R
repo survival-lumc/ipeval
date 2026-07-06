@@ -142,6 +142,24 @@ add_lag_terms <- function(df, var, lag = 1, fill = 0) {
 #'they would have normally been (natural course) after those first two.
 #'If treatment is categorical, `treatment_of_interest` should be a character vector, e.g `c(“active”,”control”).
 #'
+#'All performance metrics are computed on the weighted population mimicking the
+#'hypothetical situation where every subject’s treatment strategy was set to the
+#'treatment strategy of interest (and where nobody was censored before time_horizon). "auc" is area
+#'under the (ROC) curve. "brier" is Brier score, ranging from 0 to 1. Scaled
+#'brier score is also available (metrics = "scaled_brier"), which expresses the Brier score relative to the null model. For the O/E ratio,
+#'the numerator (observed) is the (weighted) fraction of 'observed' events in
+#'the pseudo-population, and the denominator (expected) is the (unweighted) mean
+#'of risk estimates for all subjects in data. The calplot option generates a
+#'calibration plot, with default 8 subgroups. More/less subgroups can be
+#'specified by appending “calplot” with a number indicating the number of
+#'subgroups, e.g. metrics = "calplot10" for 10 subgroups.
+#'
+#'The null model estimates are obtained as the weighted mean outcome in the subset
+#'that followed the treatment strategy of interest (and was not censored before
+#'time_horizon). For time-to-event data, this null prediction could also be
+#'computed using a weighted Kaplan-Meier estimator, which would be more
+#'efficient, but computationally slower.
+#'
 #'The censoring distribution is estimated with a Kaplan-Meier estimator implemented using `prodlim::prodlim(...,
 #'reverse = TRUE)`. This correctly estimates the censoring distribution when
 #'there are ties between event and censoring times. When using a Cox model to
