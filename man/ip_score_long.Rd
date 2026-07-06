@@ -163,7 +163,10 @@ calibration plot, with default 8 subgroups. More/less subgroups can be
 specified by appending “calplot” with a number indicating the number of
 subgroups, e.g. metrics = "calplot10" for 10 subgroups.
 
-The null model estimates are obtained as the weighted mean outcome in the subset that followed the treatment strategy of interest (and was not censored #’ before time_horizon). For time-to-event data, this null prediction could also be computed using a weighted Kaplan-Meier estimator, which would be more
+The null model estimates are obtained as the weighted mean outcome in the subset
+that followed the treatment strategy of interest (and was not censored before
+time_horizon). For time-to-event data, this null prediction could also be
+computed using a weighted Kaplan-Meier estimator, which would be more
 efficient, but computationally slower.
 
 The censoring distribution is estimated with a Kaplan-Meier estimator implemented using `prodlim::prodlim(...,
