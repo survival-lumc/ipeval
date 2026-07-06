@@ -33,24 +33,21 @@ evaluating and comparing multiple vectors.}
 consist of 1 row per subject, with columns 'id', 'time', and 'status'. Time
 can be continuous, status represents the binary outcome status at ‘time’.}
 
-\item{data_long}{A dataframe in 'long' format, containing the time-dependent
+\item{data_long}{A dataframe in 'long' format, i.e., each subject has one row for each of their visits. Contains the time-dependent
 treatment variable, the (potentially time-dependent) adjustment variables
-(confounders) and other time dependent covariates, possibly required for
-modeling the censoring mechanism. Baseline covariates can also be included,
-in which case they would be repeated for every visit. The data should be in
-'long' format, i.e. each subject has one row for each of their visits. Must
+(confounders) and other time dependent covariates that may be required for
+modeling the censoring mechanism. Baseline covariates can be included by repeating their value for every visit. Must
 include the columns 'id' and 'visit_time'. There should not be any visits
-after a subject's follow up time. All subjects should have data at each
+after a subject's follow-up time. All subjects should have data at each
 visit.}
 
 \item{treatment_formula}{A formula which indicates the treatment/intervention
-(left hand side) and the adjustment variables (right hand side) in
+(left hand side) and the adjustment variables (right hand side), which must be present in
 data_long. E.g. A ~ L + A_lag_1. The left hand side can be either a binary
 treatment (coded as 0/1 numeric, logical or factor) or a treatment with more
 than two categories (coded as factor). The adjustment variables (right hand
 side) are used to estimate the inverse probability of treatment weights
-(IPTW). All variables on the right hand side must be present in data_long.
-The IPTW can also be specified directly using the iptw argument, in which
+(IPTW) with logistic/multinomial regression. The IPTW can also be specified directly using the iptw argument, in which
 case the right hand side of this formula is ignored (the left hand side must
 still indicate the treatment, i.e. A ~ 1).}
 
@@ -76,38 +73,33 @@ data_outcome, reversing the status indicator, see details. KM is only
 supported when the right hand side of cens_formula is 1.}
 
 \item{cens_formula}{Model formula used for estimating the censoring
-probabilities, e.g. ~ x1 + x2. Could consist of only baseline variables but
+probabilities. Could consist of only baseline variables but
 also of time-dependent variables. All variables specified must be present in
-data_long.}
+data_long. The left hand side must be left blank. E.g. ~ x1 + x2.}
 
-\item{null_model}{If TRUE a model without covariates (intercept only) is
-fitted to data that estimates the same probability for all subjects in data.
-The model is fitted using the reweighted data in which all subjects are
-'counterfactually' assigned the treatment strategy of interest (using the
-IPTW, as estimated using the treatment_formula or as given by the iptw
-argument). For censored outcomes, the subjects are also
-'counterfactually' uncensored (using the IPCW, as estimated using the
-cens_formula, or as given by the ipcw argument). The null model can be used
-as a reference (baseline) model.}
+\item{null_model}{If TRUE fits a model without covariates that estimates the same probability for all subjects in data. The model is
+fitted using the reweighted data in which all subjects 'counterfactually'
+received the treatment level of interest (using the IPTW, as estimated
+using the treatment_formula or as given by the iptw argument). For
+time-to-event outcomes, the null model is also fitted using the IPCW, as estimated using the cens_formula, or as given by the ipcw argument. The null_model can be used as reference (baseline) model.}
 
 \item{bootstrap}{If this is an integer greater than 0, this indicates the
 number of bootstrap iterations, to compute 95\% confidence intervals around
-the performance metrics.}
+the performance metrics based on percentiles of the bootstrap results.}
 
 \item{bootstrap_progress}{if set to TRUE, print a progress bar indicating the
 progress of bootstrap procedure.}
 
 \item{iptw}{A numeric vector with length nrow(data_outcome), containing one
 over the probability of being compliant to the treatment strategy of interest
-for each subject If iptw is not specified, these
-weights are computed using the treatment_formula, but they can be specified
+for each subject. If iptw is not specified, these weights are computed using the treatment_formula, but they can be specified
 directly via this argument. A user-defined function can also be specified,
 which takes as input arguments 'data_outcome' and 'data_long' and returns a
 numeric vector of the IPTW weights. See details.}
 
-\item{ipcw}{A numeric vector with length nrow(data_outcome), containing the
-inverse probability of censoring weights at the time horizon, or at their event time, whichever happens
-first. If ipcw is not specified, these weights are computed using the
+\item{ipcw}{A numeric vector with length nrow(data_outcome), containing the inverse probability of censoring
+weights at the time_horizon, or at a subject's event time, whichever happens
+first. For subjects who are censored before the time_horizon, the ipcw can be left at NA. If ipcw is not specified, these weights are computed using the
 cens_formula, but they can be specified
 directly via this argument. A user-defined function can also be specified,
 which takes as input arguments 'data_outcome' and 'data_long' and returns a
@@ -131,20 +123,18 @@ methods are implemented. The object is a nested list containing: \itemize{
   \item `$predictions`, the predictions to be evaluated, i.e. the estimated probability
   of event under the intervention strategy of interest for each subject.
   \item `$ipt`, method, model and inverse probability of treatment weights
-  (IPTW). These are NA for subjects who are not directly used in the
-  pseudo-population.
+  (IPTW). The IPTW are NA for subjects who did not follow the treatment strategy of interest.
   \item `$ipc`, method, model and inverse probability of censoring weights
-  (IPCW). These are NA for subjects who were censored.
-  \item `$pseudopop`, binary vector indicating which subjects of the original
-  population were used to create the pseudo-population, by receiving the
-  treatment strategy of interest and remaining uncensored, if applicable.
+  (IPCW). The IPCW are NA for subjects who were censored before the time_horizon.
+  \item `$pseudopop`, binary vector indicating which subjects in data_outcome were re-weighted to create the pseudo-population. These are the subjects who followed the
+  treatment strategy of interest and were not censored before the time_horizon, if applicable.
   }
  The print method summarizes the results and if (quiet = FALSE), prints the
  assumptions required for valid inference.
 }
 \description{
-Estimates the predictive performance of predictions of binary (or
-time-to-event) outcomes under longitudinal intervention strategies, by
+Estimates the predictive performance of predictions of binary or
+time-to-event outcomes under longitudinal intervention strategies, by
 reweighting the data to form a pseudo-population in which every subject was
 assigned the longitudinal treatment strategy of interest.
 }
@@ -157,14 +147,13 @@ also set this argument to "always" or "never" as a shortcut for `rep(1,
 n_visits)` or `rep(0, n_visits)`. Treatment strategies where treatment is only
 set at certain visits are also possible via `NA`, e.g. use `c(1,1,NA, NA, NA)`
 when you want to form a pseudo-population where everybody's treatment levels
-are set to 1 at the first 2 visits, and their remaining three can be whatever
-they would have normally been after those first two under the natural course.
-If treatment is categorical, this should be a character vector denoting the
-treatment levels of interest, e.g `c(“active”,”control”).
+are set to 1 at the first two visits, and their treatment level at the remaining three visits can be whatever
+they would have normally been (natural course) after those first two.
+If treatment is categorical, `treatment_of_interest` should be a character vector, e.g `c(“active”,”control”).
 
-The KM censoring distribution is estimated using `prodlim::prodlim(...,
+The censoring distribution is estimated with a Kaplan-Meier estimator implemented using `prodlim::prodlim(...,
 reverse = TRUE)`. This correctly estimates the censoring distribution when
-there are ties between event and censoring times.  When using a Cox model to
+there are ties between event and censoring times. When using a Cox model to
 estimate the censoring distribution, the event indicator is reversed manually. This does
 not preserve the usual tie-handling convention: in standard survival analysis,
 censoring is assumed to occur after events at the same time point, but after
@@ -176,11 +165,11 @@ Bootstrapping is not possible when manually specifiying the IPTW/IPCW as
 numeric vectors. If specifying a model user-defined function that computes the
 ITPW/IPCW given data, it is possible. The given function will be called on
 each bootstrapped dataset and resulting metrics are used to compute the
-(empirical) 95\% Cis. More advanced techniques such as thresholding extreme IP
+95\% CIs with the percentile method. More advanced techniques such as thresholding extreme IP
 weights, can be implemented through a user-defined weight function. The
 censoring weight returned by this function should be the 1 / probability of
 remaining uncensored at the time horizon, or at their event time, whichever
-happens first.
+happens first. For subjects who are censored before the time_horizon, the ipcw can be left at NA.
 }
 \examples{
 set.seed(5)

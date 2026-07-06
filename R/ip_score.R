@@ -86,7 +86,7 @@
 #'   under outcome, reversing the event indicator, see details. KM is only
 #'   supported when the right hand side of cens_formula is 1.
 #' @param cens_formula Model formula from which the right hand side is used in
-#'   estimating the censoring probabilities. The left hand side can be left blank. E.g. ~ x1 + x2.
+#'   estimating the censoring probabilities. The left hand side must be left blank. E.g. ~ x1 + x2.
 #' @param null_model If TRUE fits a model without covariates that estimates the same probability for all subjects in data. The model is
 #'   fitted using the reweighted data in which all subjects 'counterfactually'
 #'   received the treatment level of interest (using the IPTW, as estimated
