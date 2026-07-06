@@ -44,6 +44,8 @@ plot.ip_score <- function(x,
                           sub,
                           xlab = "Predicted",
                           ylab = "Observed",
+                          cex.main = 0.8,
+                          cex.sub = 0.8,
                           ...) {
   models <- names(x$predictions)
 
@@ -89,8 +91,9 @@ plot.ip_score <- function(x,
   graphics::title(
     main = main,
     sub = sub1,
+    cex.main = cex.main,
     col.sub = "#404040",
-    cex.sub = 0.8
+    cex.sub = cex.sub
   )
   graphics::abline(0, 1, col = "black")
   colors <- grDevices::adjustcolor(
@@ -132,8 +135,9 @@ plot.ip_score <- function(x,
       graphics::title(
         main = main,
         sub = iter_sub,
+        cex.main = cex.main,
         col.sub = "#404040",
-        cex.sub = 0.8
+        cex.sub = cex.sub
       )
 
       for (i in 1:x$bootstrap_iterations) {

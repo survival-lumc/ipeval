@@ -47,7 +47,7 @@
 <polygon points='152.64,502.56 596.16,502.56 596.16,59.04 152.64,59.04 ' style='stroke-width: 0.75; fill: none;' />
 <text x='374.40' y='557.28' text-anchor='middle' style='font-size: 12.00px; font-family: sans;' textLength='50.70px' lengthAdjust='spacingAndGlyphs'>Predicted</text>
 <text transform='translate(106.56,280.80) rotate(-90)' text-anchor='middle' style='font-size: 12.00px; font-family: sans;' textLength='52.04px' lengthAdjust='spacingAndGlyphs'>Observed</text>
-<text x='374.40' y='34.48' text-anchor='middle' style='font-size: 14.40px; font-weight: bold; font-family: sans;' textLength='293.79px' lengthAdjust='spacingAndGlyphs'>Calibration had everyone followed treatment 1</text>
+<text x='374.40' y='32.82' text-anchor='middle' style='font-size: 9.60px; font-weight: bold; font-family: sans;' textLength='195.86px' lengthAdjust='spacingAndGlyphs'>Calibration had everyone followed treatment 1</text>
 </g>
 <defs>
   <clipPath id='cpMTUyLjY0fDU5Ni4xNnw1OS4wNHw1MDIuNTY='>
