@@ -95,7 +95,7 @@ ip_score(
 - cens_formula:
 
   Model formula from which the right hand side is used in estimating the
-  censoring probabilities. The left hand side can be left blank. E.g. ~
+  censoring probabilities. The left hand side must be left blank. E.g. ~
   x1 + x2.
 
 - null_model:

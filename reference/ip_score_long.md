@@ -1,7 +1,7 @@
 # Interventional prediction score for longitudinal treatment strategies
 
-Estimates the predictive performance of predictions of binary (or
-time-to-event) outcomes under longitudinal intervention strategies, by
+Estimates the predictive performance of predictions of binary or
+time-to-event outcomes under longitudinal intervention strategies, by
 reweighting the data to form a pseudo-population in which every subject
 was assigned the longitudinal treatment strategy of interest.
 
@@ -45,28 +45,28 @@ ip_score_long(
 
 - data_long:
 
-  A dataframe in 'long' format, containing the time-dependent treatment
-  variable, the (potentially time-dependent) adjustment variables
-  (confounders) and other time dependent covariates, possibly required
-  for modeling the censoring mechanism. Baseline covariates can also be
-  included, in which case they would be repeated for every visit. The
-  data should be in 'long' format, i.e. each subject has one row for
-  each of their visits. Must include the columns 'id' and 'visit_time'.
-  There should not be any visits after a subject's follow up time. All
-  subjects should have data at each visit.
+  A dataframe in 'long' format, i.e., each subject has one row for each
+  of their visits. Contains the time-dependent treatment variable, the
+  (potentially time-dependent) adjustment variables (confounders) and
+  other time dependent covariates that may be required for modeling the
+  censoring mechanism. Baseline covariates can be included by repeating
+  their value for every visit. Must include the columns 'id' and
+  'visit_time'. There should not be any visits after a subject's
+  follow-up time. All subjects should have data at each visit.
 
 - treatment_formula:
 
   A formula which indicates the treatment/intervention (left hand side)
-  and the adjustment variables (right hand side) in data_long. E.g. A ~
-  L + A_lag_1. The left hand side can be either a binary treatment
-  (coded as 0/1 numeric, logical or factor) or a treatment with more
-  than two categories (coded as factor). The adjustment variables (right
-  hand side) are used to estimate the inverse probability of treatment
-  weights (IPTW). All variables on the right hand side must be present
-  in data_long. The IPTW can also be specified directly using the iptw
-  argument, in which case the right hand side of this formula is ignored
-  (the left hand side must still indicate the treatment, i.e. A ~ 1).
+  and the adjustment variables (right hand side), which must be present
+  in data_long. E.g. A ~ L + A_lag_1. The left hand side can be either a
+  binary treatment (coded as 0/1 numeric, logical or factor) or a
+  treatment with more than two categories (coded as factor). The
+  adjustment variables (right hand side) are used to estimate the
+  inverse probability of treatment weights (IPTW) with
+  logistic/multinomial regression. The IPTW can also be specified
+  directly using the iptw argument, in which case the right hand side of
+  this formula is ignored (the left hand side must still indicate the
+  treatment, i.e. A ~ 1).
 
 - treatment_of_interest:
 
@@ -100,28 +100,27 @@ ip_score_long(
 
 - cens_formula:
 
-  Model formula used for estimating the censoring probabilities, e.g. ~
-  x1 + x2. Could consist of only baseline variables but also of
-  time-dependent variables. All variables specified must be present in
-  data_long.
+  Model formula used for estimating the censoring probabilities. Could
+  consist of only baseline variables but also of time-dependent
+  variables. All variables specified must be present in data_long. The
+  left hand side must be left blank. E.g. ~ x1 + x2.
 
 - null_model:
 
-  If TRUE a model without covariates (intercept only) is fitted to data
-  that estimates the same probability for all subjects in data. The
-  model is fitted using the reweighted data in which all subjects are
-  'counterfactually' assigned the treatment strategy of interest (using
-  the IPTW, as estimated using the treatment_formula or as given by the
-  iptw argument). For censored outcomes, the subjects are also
-  'counterfactually' uncensored (using the IPCW, as estimated using the
-  cens_formula, or as given by the ipcw argument). The null model can be
-  used as a reference (baseline) model.
+  If TRUE fits a model without covariates that estimates the same
+  probability for all subjects in data. The model is fitted using the
+  reweighted data in which all subjects 'counterfactually' received the
+  treatment level of interest (using the IPTW, as estimated using the
+  treatment_formula or as given by the iptw argument). For time-to-event
+  outcomes, the null model is also fitted using the IPCW, as estimated
+  using the cens_formula, or as given by the ipcw argument. The
+  null_model can be used as reference (baseline) model.
 
 - bootstrap:
 
   If this is an integer greater than 0, this indicates the number of
   bootstrap iterations, to compute 95% confidence intervals around the
-  performance metrics.
+  performance metrics based on percentiles of the bootstrap results.
 
 - bootstrap_progress:
 
@@ -132,7 +131,7 @@ ip_score_long(
 
   A numeric vector with length nrow(data_outcome), containing one over
   the probability of being compliant to the treatment strategy of
-  interest for each subject If iptw is not specified, these weights are
+  interest for each subject. If iptw is not specified, these weights are
   computed using the treatment_formula, but they can be specified
   directly via this argument. A user-defined function can also be
   specified, which takes as input arguments 'data_outcome' and
@@ -142,13 +141,14 @@ ip_score_long(
 - ipcw:
 
   A numeric vector with length nrow(data_outcome), containing the
-  inverse probability of censoring weights at the time horizon, or at
-  their event time, whichever happens first. If ipcw is not specified,
-  these weights are computed using the cens_formula, but they can be
-  specified directly via this argument. A user-defined function can also
-  be specified, which takes as input arguments 'data_outcome' and
-  'data_long' and returns a numeric vector of the IPCW weights. See
-  details.
+  inverse probability of censoring weights at the time_horizon, or at a
+  subject's event time, whichever happens first. For subjects who are
+  censored before the time_horizon, the ipcw can be left at NA. If ipcw
+  is not specified, these weights are computed using the cens_formula,
+  but they can be specified directly via this argument. A user-defined
+  function can also be specified, which takes as input arguments
+  'data_outcome' and 'data_long' and returns a numeric vector of the
+  IPCW weights. See details.
 
 - quiet:
 
@@ -181,16 +181,17 @@ containing:
   each subject.
 
 - \`\$ipt\`, method, model and inverse probability of treatment weights
-  (IPTW). These are NA for subjects who are not directly used in the
-  pseudo-population.
+  (IPTW). The IPTW are NA for subjects who did not follow the treatment
+  strategy of interest.
 
 - \`\$ipc\`, method, model and inverse probability of censoring weights
-  (IPCW). These are NA for subjects who were censored.
+  (IPCW). The IPCW are NA for subjects who were censored before the
+  time_horizon.
 
-- \`\$pseudopop\`, binary vector indicating which subjects of the
-  original population were used to create the pseudo-population, by
-  receiving the treatment strategy of interest and remaining uncensored,
-  if applicable.
+- \`\$pseudopop\`, binary vector indicating which subjects in
+  data_outcome were re-weighted to create the pseudo-population. These
+  are the subjects who followed the treatment strategy of interest and
+  were not censored before the time_horizon, if applicable.
 
 The print method summarizes the results and if (quiet = FALSE), prints
 the assumptions required for valid inference.
@@ -206,32 +207,55 @@ argument to "always" or "never" as a shortcut for \`rep(1, n_visits)\`
 or \`rep(0, n_visits)\`. Treatment strategies where treatment is only
 set at certain visits are also possible via \`NA\`, e.g. use \`c(1,1,NA,
 NA, NA)\` when you want to form a pseudo-population where everybody's
-treatment levels are set to 1 at the first 2 visits, and their remaining
-three can be whatever they would have normally been after those first
-two under the natural course. If treatment is categorical, this should
-be a character vector denoting the treatment levels of interest, e.g
-\`c(“active”,”control”).
+treatment levels are set to 1 at the first two visits, and their
+treatment level at the remaining three visits can be whatever they would
+have normally been (natural course) after those first two. If treatment
+is categorical, \`treatment_of_interest\` should be a character vector,
+e.g \`c(“active”,”control”).
 
-The KM censoring distribution is estimated using \`prodlim::prodlim(...,
-reverse = TRUE)\`. This correctly estimates the censoring distribution
-when there are ties between event and censoring times. When using a Cox
-model to estimate the censoring distribution, the event indicator is
-reversed manually. This does not preserve the usual tie-handling
-convention: in standard survival analysis, censoring is assumed to occur
-after events at the same time point, but after reversing the indicator
-the opposite ordering is assumed. A possible workaround is to add a
-small positive offset (\`epsilon\`) to all censoring times before
-fitting the censoring model.
+All performance metrics are computed on the weighted population
+mimicking the hypothetical situation where every subject’s treatment
+strategy was set to the treatment strategy of interest (and where nobody
+was censored before time_horizon). "auc" is area under the (ROC) curve.
+"brier" is Brier score, ranging from 0 to 1. Scaled brier score is also
+available (metrics = "scaled_brier"), which expresses the Brier score
+relative to the null model. For the O/E ratio, the numerator (observed)
+is the (weighted) fraction of 'observed' events in the
+pseudo-population, and the denominator (expected) is the (unweighted)
+mean of risk estimates for all subjects in data. The calplot option
+generates a calibration plot, with default 8 subgroups. More/less
+subgroups can be specified by appending “calplot” with a number
+indicating the number of subgroups, e.g. metrics = "calplot10" for 10
+subgroups.
+
+The null model estimates are obtained as the weighted mean outcome in
+the subset that followed the treatment strategy of interest (and was not
+censored \#’ before time_horizon). For time-to-event data, this null
+prediction could also be computed using a weighted Kaplan-Meier
+estimator, which would be more efficient, but computationally slower.
+
+The censoring distribution is estimated with a Kaplan-Meier estimator
+implemented using \`prodlim::prodlim(..., reverse = TRUE)\`. This
+correctly estimates the censoring distribution when there are ties
+between event and censoring times. When using a Cox model to estimate
+the censoring distribution, the event indicator is reversed manually.
+This does not preserve the usual tie-handling convention: in standard
+survival analysis, censoring is assumed to occur after events at the
+same time point, but after reversing the indicator the opposite ordering
+is assumed. A possible workaround is to add a small positive offset
+(\`epsilon\`) to all censoring times before fitting the censoring model.
 
 Bootstrapping is not possible when manually specifiying the IPTW/IPCW as
 numeric vectors. If specifying a model user-defined function that
 computes the ITPW/IPCW given data, it is possible. The given function
 will be called on each bootstrapped dataset and resulting metrics are
-used to compute the (empirical) 95% Cis. More advanced techniques such
-as thresholding extreme IP weights, can be implemented through a
-user-defined weight function. The censoring weight returned by this
-function should be the 1 / probability of remaining uncensored at the
-time horizon, or at their event time, whichever happens first.
+used to compute the 95% CIs with the percentile method. More advanced
+techniques such as thresholding extreme IP weights, can be implemented
+through a user-defined weight function. The censoring weight returned by
+this function should be the 1 / probability of remaining uncensored at
+the time horizon, or at their event time, whichever happens first. For
+subjects who are censored before the time_horizon, the ipcw can be left
+at NA.
 
 ## References
 
