@@ -230,7 +230,7 @@ subgroups.
 
 The null model estimates are obtained as the weighted mean outcome in
 the subset that followed the treatment strategy of interest (and was not
-censored \#’ before time_horizon). For time-to-event data, this null
+censored before time_horizon). For time-to-event data, this null
 prediction could also be computed using a weighted Kaplan-Meier
 estimator, which would be more efficient, but computationally slower.
 
