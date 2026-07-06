@@ -36,28 +36,59 @@ print.ip_score <- function(x, ...) {
 }
 
 #' @export
-plot.ip_score <- function(x, ...) {
-  # this plotting function should ideally be more customizable,
-  # i.e. show/hide legend, colors, xlim, ylim, ....
-
-  if (pretty_trt(x$treatment$treatment_of_interest) != "") {
-    caption <- paste0("Calibration had everyone followed treatment ",
-                      pretty_trt(x$treatment$treatment_of_interest))
-  } else {
-    caption <- "Calibration"
-    # for observed_score()
-  }
-
-
-
+plot.ip_score <- function(x,
+                          xlim = c(0, 1),
+                          ylim = c(0, 1),
+                          asp,
+                          main,
+                          sub,
+                          xlab = "Predicted",
+                          ylab = "Observed",
+                          ...) {
   models <- names(x$predictions)
 
+
+  if (!identical(xlim, c(0,1)) || !identical(ylim, c(0,1))) {
+    # if user did any manual specification, maximize plotting area
+    pty <- "m"
+    if (missing(asp)) {
+      asp <- NA
+    }
+  } else {
+    # else plot on a square
+    pty <- "s"
+    if (missing(asp)) {
+      asp <- 1
+    }
+  }
+
+  if (missing(main)) {
+    if (pretty_trt(x$treatment$treatment_of_interest) != "") {
+      main <- paste0("Calibration had everyone followed treatment ",
+                     pretty_trt(x$treatment$treatment_of_interest))
+    } else {
+      main <- "Calibration"
+      # for observed_score()
+    }
+  }
+
+  if (missing(sub)) {
+    sub1 <- ""
+    sub2 <- NA
+  } else {
+    sub1 <- sub
+    sub2 <- sub
+  }
+
+  # plot the calibration plot showing all models in 1
+
+  par(pty = pty)
   plot(1, type = "n",
-       xlim = c(0, 1), ylim = c(0, 1),
-       asp = 1,
-       xlab = "Predicted", ylab = "Observed")
+       xlim = xlim, ylim = ylim,
+       asp = asp, xlab = xlab, ylab = ylab)
   graphics::title(
-    main = caption,
+    main = main,
+    sub = sub1,
     col.sub = "#404040",
     cex.sub = 0.8
   )
@@ -67,6 +98,7 @@ plot.ip_score <- function(x, ...) {
     alpha.f = 0.8
   )
 
+  # plot the bootstrapped calibration plot, 1 plot for each model
   for (i in seq_along(models)) {
     graphics::lines(
       x = x$score$calplot[["pred", models[i]]],
@@ -85,16 +117,25 @@ plot.ip_score <- function(x, ...) {
          bty    = "n")
   if (!is.null(x$bootstrap)) {
     for (m in models) {
+      par(pty = pty)
       plot(1, type = "n",
-           xlim = c(0, 1), ylim = c(0, 1),
-           xlab = "Predicted", ylab = "Observed",
-           asp = 1)
+           xlim = xlim, ylim = ylim,
+           xlab = xlab, ylab = ylab,
+           asp = asp)
+
+      if (is.na(sub2)) {
+        iter_sub <- paste0("Calibration plot for ", m)
+      } else {
+        iter_sub <- sub2
+      }
+
       graphics::title(
-        main = paste0("Calibration plot for ", m),
-        sub = caption,
+        main = main,
+        sub = iter_sub,
         col.sub = "#404040",
         cex.sub = 0.8
       )
+
       for (i in 1:x$bootstrap_iterations) {
         graphics::lines(
           x = x$bootstrap$raw$calplot[[m]][[i]]$pred,
