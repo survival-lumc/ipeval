@@ -11,5 +11,7 @@
   strategies
 - [`observed_score()`](https://survival-lumc.github.io/ipeval/reference/observed_score.md)
   : Performance in observed dataset
+- [`plot(`*`<ip_score>`*`)`](https://survival-lumc.github.io/ipeval/reference/plot.ip_score.md)
+  : Plot calibration for an ip_score object
 - [`wide_to_long()`](https://survival-lumc.github.io/ipeval/reference/wide_to_long.md)
   : Convert wide longitudinal data to long format
