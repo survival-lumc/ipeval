@@ -91,15 +91,20 @@ Invisibly returns \`x\`.
 
 ## Details
 
-Subjects are grouped into subgroups according to their predicted risks.
-For each subgroup, the x-coordinate is the mean predicted risk. The
-y-coordinate is the weighted fraction of 'observed' events of all
-subjects in the subgroup that are also in the pseudo-population.
+Subjects are grouped into calibration subgroups according to their
+predicted risks. For each subgroup, the x-coordinate is the mean
+predicted risk. The y-coordinate is the inverse-probability-weighted
+proportion of 'observed' events of all subjects in the corresponding
+subgroup that are also in the pseudo-population.
 
-The observed and predicted calibration knots used to construct the plots
-are stored in \`x\$score\$calplot\`, where \`x\` is the \`ip_score\`
-object. These raw values can be used to create custom calibration plots
-when additional control is needed. numbers can be used.
+The observed and predicted calibration subgroup coordinates are computed
+by the
+[`ip_score`](https://survival-lumc.github.io/ipeval/reference/ip_score.md)
+or
+[`ip_score_long`](https://survival-lumc.github.io/ipeval/reference/ip_score_long.md)
+function and are stored in \`x\$score\$calplot\`, where \`x\` is the
+\`ip_score\` object. These raw values can be used to create custom
+calibration plots when additional control is needed.
 
 If
 [`ip_score`](https://survival-lumc.github.io/ipeval/reference/ip_score.md)
