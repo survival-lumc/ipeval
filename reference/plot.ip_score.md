@@ -103,7 +103,7 @@ The observed and predicted calibration knots used to construct the plots
 are stored in \`x\$score\$calplot\`, where \`x\` is the \`ip_score\`
 object.
 
-This method is available only when \`"calplot"\` was included in the
+This method is available only when "calplot" was included in the
 \`metrics\` argument of
 [`ip_score`](https://survival-lumc.github.io/ipeval/reference/ip_score.md)
 or
