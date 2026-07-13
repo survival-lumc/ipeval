@@ -40,15 +40,17 @@ print.ip_score <- function(x, ...) {
 #' Produces a calibration plot comparing predicted and observed outcome risks
 #' under the intervention of interest.
 #'
-#' Subjects are grouped into subgroups according to their predicted
+#' Subjects are grouped into calibration subgroups according to their predicted
 #' risks. For each subgroup, the x-coordinate is the mean predicted risk. The
-#' y-coordinate is the weighted fraction of 'observed' events of all subjects in
-#' the subgroup that are also in the pseudo-population.
+#' y-coordinate is the inverse-probability-weighted proportion of 'observed'
+#' events of all subjects in the corresponding subgroup that are also in the
+#' pseudo-population.
 #'
-#' The observed and predicted calibration knots used to construct the plots are
-#' stored in `x$score$calplot`, where `x` is the `ip_score` object. These raw
-#' values can be used to create custom calibration plots when additional control
-#' is needed. numbers can be used.
+#' The observed and predicted calibration subgroup coordinates are computed by the
+#' \code{\link{ip_score}} or \code{\link{ip_score_long}} function and are stored
+#' in `x$score$calplot`, where `x` is the `ip_score` object. These raw values
+#' can be used to create custom calibration plots when additional control is
+#' needed.
 #'
 #' If \code{\link{ip_score}} or \code{\link{ip_score_long}} was run with
 #' bootstrap resampling (`bootstrap > 0`), additional panels are produced for
