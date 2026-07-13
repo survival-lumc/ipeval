@@ -69,7 +69,7 @@ replicate.
 The observed and predicted calibration knots used to construct the plots are
 stored in `x$score$calplot`, where `x` is the `ip_score` object.
 
-This method is available only when `"calplot"` was included in the
+This method is available only when "calplot" was included in the
 `metrics` argument of \code{\link{ip_score}} or \code{\link{ip_score_long}}.
 }
 \examples{
