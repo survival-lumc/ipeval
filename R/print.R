@@ -35,34 +35,83 @@ print.ip_score <- function(x, ...) {
   }
 }
 
+#' Plot calibration for an ip_score object
+#'
+#' Produces a calibration plot comparing predicted and observed outcome risks
+#' under the intervention of interest.
+#'
+#' If \code{\link{ip_score}} or \code{\link{ip_score_long}} was run with
+#' bootstrap resampling (`bootstrap > 0`), additional panels are produced for
+#' every evaluated model showing the calibration curve from each bootstrap
+#' replicate.
+#'
+#' The observed and predicted calibration knots used to construct the plots are
+#' stored in `x$score$calplot`, where `x` is the `ip_score` object.
+#'
+#' This method is available only when `"calplot"` was included in the
+#' `metrics` argument of \code{\link{ip_score}} or \code{\link{ip_score_long}}.
+#'
+#' @param x The `ip_score` object returned by \code{\link{ip_score}} or
+#'   \code{\link{ip_score_long}}
+#' @param xlim The x limits of the plot, c(x1, x2)
+#' @param ylim The y limits of the plot, c(x1, x2)
+#' @param pty A character specifying the type of plot region to be used; "s"
+#'   generates a square plotting region and "m" generates the maximal plotting
+#'   region.
+#' @param asp The y/x aspect ratio
+#' @param main Character string giving the main title of the plot.
+#' @param sub Character string giving the subtitle of the plot.
+#' @param xlab Character string specifying the x-axis label.
+#' @param ylab Character string specifying the y-axis label.
+#' @param cex.main Numeric value controlling the size of the main title.
+#' @param cex.sub Numeric value controlling the size of the subtitle.
+#' @param legend Keyword denoting the positioning of the legend. Can be
+#'   "bottomright", "bottom", "bottomleft", "left", "topleft", "top",
+#'   "topright", "right" and "center", or alternatively, "disable" to hide the
+#'   legend.
+#' @param ... Currently ignored.
+#'
+#' @return Invisibly returns `x`.
+#'
 #' @export
+#'
+#' @examples
+#' n <- 1000
+#'
+#' data <- data.frame(L = rnorm(n), P = rnorm(n))
+#' data$A <- rbinom(n, 1, plogis(data$L))
+#' data$Y <- rbinom(n, 1, plogis(0.1 + 0.5*data$L + 0.7*data$P - 2*data$A))
+#'
+#' random <- runif(n, 0, 1)
+#' model <- glm(Y ~ A + P, data = data, family = "binomial")
+#'
+#' score <- ip_score(
+#'   object = list(random, model),
+#'   data = data,
+#'   outcome = Y,
+#'   treatment_formula = A ~ L,
+#'   treatment_of_interest = 0,
+#'   bootstrap = 20,
+#'   bootstrap_progress = FALSE,
+#'   metrics = "calplot"
+#' )
+#'
+#' plot(score)
 plot.ip_score <- function(x,
                           xlim = c(0, 1),
                           ylim = c(0, 1),
-                          asp,
+                          pty = "s",
+                          asp = NA,
                           main,
                           sub,
                           xlab = "Predicted",
                           ylab = "Observed",
                           cex.main = 0.8,
                           cex.sub = 0.8,
+                          legend = "topleft",
                           ...) {
   models <- names(x$predictions)
 
-
-  if (!identical(xlim, c(0,1)) || !identical(ylim, c(0,1))) {
-    # if user did any manual specification, maximize plotting area
-    pty <- "m"
-    if (missing(asp)) {
-      asp <- NA
-    }
-  } else {
-    # else plot on a square
-    pty <- "s"
-    if (missing(asp)) {
-      asp <- 1
-    }
-  }
 
   if (missing(main)) {
     if (pretty_trt(x$treatment$treatment_of_interest) != "") {
@@ -111,13 +160,16 @@ plot.ip_score <- function(x,
       lw = 2
     )
   }
-  graphics::legend("topleft",
-         legend = models,
-         col    = colors,
-         lty    = 1,
-         lwd    = 1,
-         pch    = 1,
-         bty    = "n")
+  if (legend != "disable") {
+    graphics::legend(x = legend,
+                     legend = models,
+                     col    = colors,
+                     lty    = 1,
+                     lwd    = 1,
+                     pch    = 1,
+                     bty    = "n")
+  }
+
   if (!is.null(x$bootstrap)) {
     for (m in models) {
       par(pty = pty)
@@ -155,16 +207,18 @@ plot.ip_score <- function(x,
         type = "o",
         col = "blue", lw = 2,
       )
-      graphics::legend("topleft",
-             legend = c("bootstrap iteration", "original (CF) data"),
-             col    = c("darkgrey", "blue"),
-             lty    = 1,
-             lwd    = c(1,2),
-             pch    = c(1,1),
-             bty    = "n")
+      if (legend != "disable") {
+        graphics::legend(x = legend,
+                         legend = c("bootstrap iteration", "original pseudopop"),
+                         col    = c("darkgrey", "blue"),
+                         lty    = 1,
+                         lwd    = c(1,2),
+                         pch    = c(1,1),
+                         bty    = "n")
+      }
     }
   }
-
+  return(invisible(x))
 }
 
 
