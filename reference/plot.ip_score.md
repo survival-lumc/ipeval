@@ -1,7 +1,7 @@
-# Plot calibration for an ip_score object
+# Plot calibration curve for an ip_score object
 
-Produces a calibration plot comparing predicted and observed outcome
-risks under the intervention of interest.
+Produces a calibration plot comparing predicted and observed outcomes
+under the intervention of interest.
 
 ## Usage
 
@@ -14,11 +14,9 @@ plot(
   pty = "s",
   asp = NA,
   main,
-  sub,
   xlab = "Predicted",
   ylab = "Observed",
   cex.main = 0.8,
-  cex.sub = 0.8,
   legend = "topleft",
   ...
 )
@@ -39,7 +37,7 @@ plot(
 
 - ylim:
 
-  The y limits of the plot, c(x1, x2)
+  The y limits of the plot, c(y1, y2)
 
 - pty:
 
@@ -55,10 +53,6 @@ plot(
 
   Character string giving the main title of the plot.
 
-- sub:
-
-  Character string giving the subtitle of the plot.
-
 - xlab:
 
   Character string specifying the x-axis label.
@@ -71,15 +65,11 @@ plot(
 
   Numeric value controlling the size of the main title.
 
-- cex.sub:
-
-  Numeric value controlling the size of the subtitle.
-
 - legend:
 
   Keyword denoting the positioning of the legend. Can be "bottomright",
   "bottom", "bottomleft", "left", "topleft", "top", "topright", "right"
-  and "center", or alternatively, "disable" to hide the legend.
+  and "center", or alternatively, "none" to hide the legend.
 
 - ...:
 
@@ -91,11 +81,10 @@ Invisibly returns \`x\`.
 
 ## Details
 
-Subjects are grouped into calibration subgroups according to their
-predicted risks. For each subgroup, the x-coordinate is the mean
-predicted risk. The y-coordinate is the inverse-probability-weighted
-proportion of 'observed' events of all subjects in the corresponding
-subgroup that are also in the pseudo-population.
+Subjects are grouped into subgroups according to percentiles of the
+estimated risks. For each subgroup, the x-coordinate is the mean
+estimated risk of the subgroup. The y-coordinate is the
+inverse-probability-weighted proportion of 'observed' events.
 
 The observed and predicted calibration subgroup coordinates are computed
 by the
@@ -112,7 +101,7 @@ or
 [`ip_score_long`](https://survival-lumc.github.io/ipeval/reference/ip_score_long.md)
 was run with bootstrap resampling (\`bootstrap \> 0\`), additional
 panels are produced for every evaluated model showing the calibration
-curve from each bootstrap replicate.
+curves from all bootstrap replicate in grey.
 
 This method is available only when "calplot" was included in the
 \`metrics\` argument of
