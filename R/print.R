@@ -35,16 +35,15 @@ print.ip_score <- function(x, ...) {
   }
 }
 
-#' Plot calibration for an ip_score object
+#' Plot calibration curve for an ip_score object
 #'
-#' Produces a calibration plot comparing predicted and observed outcome risks
+#' Produces a calibration plot comparing predicted and observed outcomes
 #' under the intervention of interest.
 #'
-#' Subjects are grouped into calibration subgroups according to their predicted
-#' risks. For each subgroup, the x-coordinate is the mean predicted risk. The
+#' Subjects are grouped into subgroups according to percentiles of the estimated
+#' risks. For each subgroup, the x-coordinate is the mean estimated risk of the subgroup. The
 #' y-coordinate is the inverse-probability-weighted proportion of 'observed'
-#' events of all subjects in the corresponding subgroup that are also in the
-#' pseudo-population.
+#' events.
 #'
 #' The observed and predicted calibration subgroup coordinates are computed by the
 #' \code{\link{ip_score}} or \code{\link{ip_score_long}} function and are stored
@@ -54,8 +53,8 @@ print.ip_score <- function(x, ...) {
 #'
 #' If \code{\link{ip_score}} or \code{\link{ip_score_long}} was run with
 #' bootstrap resampling (`bootstrap > 0`), additional panels are produced for
-#' every evaluated model showing the calibration curve from each bootstrap
-#' replicate.
+#' every evaluated model showing the calibration curves from all bootstrap
+#' replicate in grey.
 #'
 #' This method is available only when "calplot" was included in the `metrics`
 #' argument of \code{\link{ip_score}} or \code{\link{ip_score_long}}.
@@ -63,20 +62,18 @@ print.ip_score <- function(x, ...) {
 #' @param x The `ip_score` object returned by \code{\link{ip_score}} or
 #'   \code{\link{ip_score_long}}
 #' @param xlim The x limits of the plot, c(x1, x2)
-#' @param ylim The y limits of the plot, c(x1, x2)
+#' @param ylim The y limits of the plot, c(y1, y2)
 #' @param pty A character specifying the type of plot region to be used; "s"
 #'   generates a square plotting region and "m" generates the maximal plotting
 #'   region.
 #' @param asp The y/x aspect ratio
 #' @param main Character string giving the main title of the plot.
-#' @param sub Character string giving the subtitle of the plot.
 #' @param xlab Character string specifying the x-axis label.
 #' @param ylab Character string specifying the y-axis label.
 #' @param cex.main Numeric value controlling the size of the main title.
-#' @param cex.sub Numeric value controlling the size of the subtitle.
 #' @param legend Keyword denoting the positioning of the legend. Can be
 #'   "bottomright", "bottom", "bottomleft", "left", "topleft", "top",
-#'   "topright", "right" and "center", or alternatively, "disable" to hide the
+#'   "topright", "right" and "center", or alternatively, "none" to hide the
 #'   legend.
 #' @param ... Currently ignored.
 #'
@@ -112,11 +109,9 @@ plot.ip_score <- function(x,
                           pty = "s",
                           asp = NA,
                           main,
-                          sub,
                           xlab = "Predicted",
                           ylab = "Observed",
                           cex.main = 0.8,
-                          cex.sub = 0.8,
                           legend = "topleft",
                           ...) {
   models <- names(x$predictions)
@@ -132,14 +127,6 @@ plot.ip_score <- function(x,
     }
   }
 
-  if (missing(sub)) {
-    sub1 <- ""
-    sub2 <- NA
-  } else {
-    sub1 <- sub
-    sub2 <- sub
-  }
-
   # plot the calibration plot showing all models in 1
 
   par(pty = pty)
@@ -148,10 +135,7 @@ plot.ip_score <- function(x,
        asp = asp, xlab = xlab, ylab = ylab)
   graphics::title(
     main = main,
-    sub = sub1,
     cex.main = cex.main,
-    col.sub = "#404040",
-    cex.sub = cex.sub
   )
   graphics::abline(0, 1, col = "black")
   colors <- grDevices::adjustcolor(
@@ -187,18 +171,9 @@ plot.ip_score <- function(x,
            xlab = xlab, ylab = ylab,
            asp = asp)
 
-      if (is.na(sub2)) {
-        iter_sub <- paste0("Calibration plot for ", m)
-      } else {
-        iter_sub <- sub2
-      }
-
       graphics::title(
         main = main,
-        sub = iter_sub,
         cex.main = cex.main,
-        col.sub = "#404040",
-        cex.sub = cex.sub
       )
 
       for (i in 1:x$bootstrap_iterations) {
@@ -216,12 +191,12 @@ plot.ip_score <- function(x,
         type = "o",
         col = "blue", lw = 2,
       )
-      if (legend != "disable") {
+      if (legend != "none") {
         graphics::legend(x = legend,
-                         legend = c("bootstrap iteration", "original pseudopop"),
-                         col    = c("darkgrey", "blue"),
+                         legend = c(m , "bootstrap iteration"),
+                         col    = c("blue", "darkgrey"),
                          lty    = 1,
-                         lwd    = c(1,2),
+                         lwd    = c(2,1),
                          pch    = c(1,1),
                          bty    = "n")
       }

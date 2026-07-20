@@ -2,7 +2,7 @@
 % Please edit documentation in R/print.R
 \name{plot.ip_score}
 \alias{plot.ip_score}
-\title{Plot calibration for an ip_score object}
+\title{Plot calibration curve for an ip_score object}
 \usage{
 \method{plot}{ip_score}(
   x,
@@ -11,11 +11,9 @@
   pty = "s",
   asp = NA,
   main,
-  sub,
   xlab = "Predicted",
   ylab = "Observed",
   cex.main = 0.8,
-  cex.sub = 0.8,
   legend = "topleft",
   ...
 )
@@ -26,7 +24,7 @@
 
 \item{xlim}{The x limits of the plot, c(x1, x2)}
 
-\item{ylim}{The y limits of the plot, c(x1, x2)}
+\item{ylim}{The y limits of the plot, c(y1, y2)}
 
 \item{pty}{A character specifying the type of plot region to be used; "s"
 generates a square plotting region and "m" generates the maximal plotting
@@ -36,19 +34,15 @@ region.}
 
 \item{main}{Character string giving the main title of the plot.}
 
-\item{sub}{Character string giving the subtitle of the plot.}
-
 \item{xlab}{Character string specifying the x-axis label.}
 
 \item{ylab}{Character string specifying the y-axis label.}
 
 \item{cex.main}{Numeric value controlling the size of the main title.}
 
-\item{cex.sub}{Numeric value controlling the size of the subtitle.}
-
 \item{legend}{Keyword denoting the positioning of the legend. Can be
 "bottomright", "bottom", "bottomleft", "left", "topleft", "top",
-"topright", "right" and "center", or alternatively, "disable" to hide the
+"topright", "right" and "center", or alternatively, "none" to hide the
 legend.}
 
 \item{...}{Currently ignored.}
@@ -57,15 +51,14 @@ legend.}
 Invisibly returns `x`.
 }
 \description{
-Produces a calibration plot comparing predicted and observed outcome risks
+Produces a calibration plot comparing predicted and observed outcomes
 under the intervention of interest.
 }
 \details{
-Subjects are grouped into calibration subgroups according to their predicted
-risks. For each subgroup, the x-coordinate is the mean predicted risk. The
+Subjects are grouped into subgroups according to percentiles of the estimated
+risks. For each subgroup, the x-coordinate is the mean estimated risk of the subgroup. The
 y-coordinate is the inverse-probability-weighted proportion of 'observed'
-events of all subjects in the corresponding subgroup that are also in the
-pseudo-population.
+events.
 
 The observed and predicted calibration subgroup coordinates are computed by the
 \code{\link{ip_score}} or \code{\link{ip_score_long}} function and are stored
@@ -75,8 +68,8 @@ needed.
 
 If \code{\link{ip_score}} or \code{\link{ip_score_long}} was run with
 bootstrap resampling (`bootstrap > 0`), additional panels are produced for
-every evaluated model showing the calibration curve from each bootstrap
-replicate.
+every evaluated model showing the calibration curves from all bootstrap
+replicate in grey.
 
 This method is available only when "calplot" was included in the `metrics`
 argument of \code{\link{ip_score}} or \code{\link{ip_score_long}}.
