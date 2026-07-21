@@ -153,7 +153,7 @@ plot.ip_score <- function(x,
       lw = 2
     )
   }
-  if (legend != "disable") {
+  if (legend != "none") {
     graphics::legend(x = legend,
                      legend = models,
                      col    = colors,
