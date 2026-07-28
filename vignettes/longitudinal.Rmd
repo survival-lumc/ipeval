@@ -200,6 +200,7 @@ summary(risk_under_1)
 ```
 
 We will use the `ip_score_long()` function, which evaluates risk estimates under longitudinal interventions using inverse-probability weighting. It requires:
+
 * an outcome dataset with one row per subject, with survival time and status,
 * a dataset in long format, containing data on observed treatment and covariates, with one row per subject and visit,
 * a model describing the treatment assignment mechanism.
