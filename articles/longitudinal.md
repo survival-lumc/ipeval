@@ -60,11 +60,13 @@ summary(risk_under_1)
 We will use the
 [`ip_score_long()`](https://survival-lumc.github.io/ipeval/reference/ip_score_long.md)
 function, which evaluates risk estimates under longitudinal
-interventions using inverse-probability weighting. It requires: \* an
-outcome dataset with one row per subject, with survival time and status,
-\* a dataset in long format, containing data on observed treatment and
-covariates, with one row per subject and visit, \* a model describing
-the treatment assignment mechanism.
+interventions using inverse-probability weighting. It requires:
+
+- an outcome dataset with one row per subject, with survival time and
+  status,
+- a dataset in long format, containing data on observed treatment and
+  covariates, with one row per subject and visit,
+- a model describing the treatment assignment mechanism.
 
 The long dataset must include all variables used in the treatment model.
 In our example, treatment is assumed to depend on the value of L at the

@@ -118,11 +118,14 @@ simulated). Here, we focus on evaluating those predictions.</p>
 <span><span class="co">#&gt;  0.1391  0.2504  0.2822  0.2854  0.3170  0.5448</span></span></code></pre></div>
 <p>We will use the <code><a href="../reference/ip_score_long.html">ip_score_long()</a></code> function, which
 evaluates risk estimates under longitudinal interventions using
-inverse-probability weighting. It requires: * an outcome dataset with
-one row per subject, with survival time and status, * a dataset in long
-format, containing data on observed treatment and covariates, with one
-row per subject and visit, * a model describing the treatment assignment
-mechanism.</p>
+inverse-probability weighting. It requires:</p>
+<ul>
+<li>an outcome dataset with one row per subject, with survival time and
+status,</li>
+<li>a dataset in long format, containing data on observed treatment and
+covariates, with one row per subject and visit,</li>
+<li>a model describing the treatment assignment mechanism.</li>
+</ul>
 <p>The long dataset must include all variables used in the treatment
 model. In our example, treatment is assumed to depend on the value of L
 at the current visit and the treatment value at the previous visit, so
