@@ -43,15 +43,16 @@ name of a single numeric/logical column in data, or a Surv object for
 time-to-event data, e.g. Surv(time, status), if time and status are columns
 in data.}
 
-\item{treatment_formula}{A formula which indicates the treatment/intervention variable
-(left hand side) and the adjustment variables (right hand side) in the
-data. E.g. A ~ L. The left hand side can be either a binary treatment
+\item{treatment_formula}{A formula which indicates the treatment/intervention
+variable (left hand side) and the adjustment variables (right hand side) in
+the data. E.g. A ~ L. The left hand side can be either a binary treatment
 (coded as 0/1 numeric, logical or factor) or a treatment with more than two
 categories (coded as a factor). The right hand side variables  are used to
-estimate the inverse probability of treatment weights (IPTW) with logistic/multinomial regression. The IPTW can
-also be specified directly as a vector using the iptw argument, in which case the right
-hand side of treatment_formula is ignored (the left hand side must still
-indicate the treatment, i.e. A ~ 1).}
+estimate the inverse probability of treatment weights (IPTW) with
+logistic/multinomial regression. The IPTW can also be specified directly as
+a vector using the iptw argument, in which case the right hand side of
+treatment_formula is ignored (the left hand side must still indicate the
+treatment, i.e. A ~ 1).}
 
 \item{treatment_of_interest}{A treatment level under which the predictions
 should be evaluated.}
@@ -70,17 +71,22 @@ under outcome, reversing the event indicator, see details. KM is only
 supported when the right hand side of cens_formula is 1.}
 
 \item{cens_formula}{Model formula from which the right hand side is used in
-estimating the censoring probabilities. The left hand side must be left blank. E.g. ~ x1 + x2.}
+estimating the censoring probabilities. The left hand side must be left
+blank. E.g. ~ x1 + x2.}
 
-\item{null_model}{If TRUE fits a model without covariates that estimates the same probability for all subjects in data. The model is
-fitted using the reweighted data in which all subjects 'counterfactually'
-received the treatment level of interest (using the IPTW, as estimated
-using the treatment_formula or as given by the iptw argument). For
-time-to-event outcomes, the null model is also fitted using the IPCW, as estimated using the cens_formula, or as given by the ipcw argument. The null_model can be used as reference (baseline) model.}
+\item{null_model}{If TRUE fits a model without covariates that estimates the
+same probability for all subjects in data. The model is fitted using the
+reweighted data in which all subjects 'counterfactually' received the
+treatment level of interest (using the IPTW, as estimated using the
+treatment_formula or as given by the iptw argument). For time-to-event
+outcomes, the null model is also fitted using the IPCW, as estimated using
+the cens_formula, or as given by the ipcw argument. The null_model can be
+used as reference (baseline) model.}
 
 \item{bootstrap}{If this is an integer greater than 0, this indicates the
 number of bootstrap iterations, used to compute 95\% confidence intervals
-around the performance metrics based on percentiles of the bootstrap results.}
+around the performance metrics based on percentiles of the bootstrap
+results.}
 
 \item{bootstrap_progress}{if set to TRUE, print a progress bar indicating the
 progress of the bootstrap procedure.}
@@ -92,11 +98,12 @@ user-defined function can also be specified, which takes as input 'data'
 and returns a numeric vector of IPTW weights. See details.}
 
 \item{ipcw}{A numeric vector, containing the inverse probability of censoring
-weights at the time_horizon, or at a subject's event time, whichever happens
-first. For subjects who are censored before the time_horizon, the ipcw can be left at NA. If ipcw is not specified, these weights are computed using the
-cens_formula, but they can be specified directly via this argument. A
-user-defined function can also be specified, which takes as input 'data'
-and returns a numeric vector of IPCW weights. See details.}
+weights at the time_horizon, or at a subject's event time, whichever
+happens first. For subjects who are censored before the time_horizon, the
+ipcw can be left at NA. If ipcw is not specified, these weights are
+computed using the cens_formula, but they can be specified directly via
+this argument. A user-defined function can also be specified, which takes
+as input 'data' and returns a numeric vector of IPCW weights. See details.}
 
 \item{quiet}{If set to TRUE, don't print assumptions.}
 
@@ -126,54 +133,72 @@ methods are implemented. The object is a nested list containing: \itemize{
   assumptions required for valid inference.
 }
 \description{
-Estimates the performance of predictions of binary or time-to-event outcomes under baseline
-interventions, by reweighting the data to form a pseudo-population in which
-every subject was assigned the treatment level of interest.
+Estimates the performance of predictions of binary or time-to-event outcomes
+under baseline interventions, by reweighting the data to form a
+pseudo-population in which every subject was assigned the treatment level of
+interest.
 }
 \details{
 When supplying a glm or coxph model as object, the function will try to
 estimate risks from the model under the treatment level of interest for all
 subjects in data. If the model does not have the treatment as covariate, it
 is assumed it already estimates the risk under the treatment level of
-interest (e.g. because the model was fitted in a population all receiving the treatment level of interest). Alternatively, if the model includes the treatment as covariate,
-the function estimates the risk under the treatment level of interest for all
-subjects in data, even if they were assigned an alternative treatment level.
+interest (e.g. because the model was fitted in a population all receiving the
+treatment level of interest). Alternatively, if the model includes the
+treatment as covariate, the function estimates the risk under the treatment
+level of interest for all subjects in data, even if they were assigned an
+alternative treatment level.
 
 All performance metrics are computed on the weighted population mimicking the
 hypothetical situation where every subject’s treatment level was set to the
-treatment level of interest (and where nobody was censored before time_horizon). "auc" is area
-under the (ROC) curve. "brier" is Brier score, ranging from 0 to 1. Scaled
-brier score is also available (metrics = "scaled_brier"), which expresses the Brier score relative to the null model. For the O/E ratio,
-the numerator (observed) is the (weighted) fraction of 'observed' events in
-the pseudo-population, and the denominator (expected) is the (unweighted) mean
-of risk estimates for all subjects in data. The calplot option generates a
-calibration plot, with default 8 subgroups. More/less subgroups can be
-specified by appending “calplot” with a number indicating the number of
-subgroups, e.g. metrics = "calplot10" for 10 subgroups.
+treatment level of interest (and where nobody was censored before
+time_horizon). "auc" is area under the (ROC) curve. "brier" is Brier score,
+ranging from 0 to 1. Scaled brier score is also available (metrics =
+"scaled_brier"), which expresses the Brier score relative to the null model.
+For the O/E ratio, the numerator (observed) is the (weighted) fraction of
+'observed' events in the pseudo-population, and the denominator (expected) is
+the (unweighted) mean of risk estimates for all subjects in data. The calplot
+option generates a calibration plot, with default 8 subgroups. More/less
+subgroups can be specified by appending “calplot” with a number indicating
+the number of subgroups, e.g. metrics = "calplot10" for 10 subgroups.
 
-The null model estimates are obtained as the weighted mean outcome in the subset observed with the treatment level of interest (and not censored before time_horizon). For time-to-event data, this null prediction could also be
+The null model estimates are obtained as the weighted mean outcome in the
+subset observed with the treatment level of interest (and not censored before
+time_horizon). For time-to-event data, this null prediction could also be
 computed using a weighted Kaplan-Meier estimator, which would be more
 efficient, but computationally slower.
 
-The censoring distribution is estimated with a Kaplan-Meier estimator implemented using `prodlim::prodlim(...,
-reverse = TRUE)`. This correctly estimates the censoring distribution when
-there are ties between event and censoring times.  When using a Cox model to
-estimate the censoring distribution, the event indicator is reversed. This
-does not preserve the usual tie-handling convention: in standard survival
-analysis, censoring is assumed to occur after events at the same time point,
-but after reversing the indicator the opposite ordering is assumed. A
-possible workaround is to add a small positive offset (`epsilon`) to all
-censoring times before fitting the censoring model.
+The censoring distribution is estimated with a Kaplan-Meier estimator
+implemented using `prodlim::prodlim(..., reverse = TRUE)`. This correctly
+estimates the censoring distribution when there are ties between event and
+censoring times.  When using a Cox model to estimate the censoring
+distribution, the event indicator is reversed. This does not preserve the
+usual tie-handling convention: in standard survival analysis, censoring is
+assumed to occur after events at the same time point, but after reversing the
+indicator the opposite ordering is assumed. A possible workaround is to add a
+small positive offset (`epsilon`) to all censoring times before fitting the
+censoring model.
+
+When supplying time-to-event data in which some subjects have follow-up
+beyond the specified time horizon, the full follow-up time is used when
+estimating the censoring distribution, rather than truncating follow-up at
+the prediction horizon. This does not affect the IPCW when the censoring
+distribution is estimated using the Kaplan-Meier estimator, but it can
+affect the IPCW when using a Cox model. If the censoring model should be
+estimated using information only up to the prediction horizon, the user must
+administratively censor subjects at the prediction horizon before supplying
+the data to `ip_score()`.
 
 Bootstrapping is not possible when manually specifying the IPTW/IPCW as
 numeric vectors. If specifying a user-defined function that computes the
 IPTW/IPCW given data, it is possible. The given function will be called on
 each bootstrapped dataset and resulting metrics are used to compute the 95\%
-CIs with the percentile method. More advanced techniques, such as thresholding extreme IP weights, can
-be implemented through user-defined weight function. The censoring weight
-returned by this function should be the 1 / probability of remaining
-uncensored till the time_horizon, or till a subject's event time, whichever happens
-first. For subjects who are censored before the time_horizon, the ipcw can be left at NA.
+CIs with the percentile method. More advanced techniques, such as
+thresholding extreme IP weights, can be implemented through user-defined
+weight function. The censoring weight returned by this function should be the
+1 / probability of remaining uncensored till the time_horizon, or till a
+subject's event time, whichever happens first. For subjects who are censored
+before the time_horizon, the ipcw can be left at NA.
 }
 \examples{
 n <- 1000
