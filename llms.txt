@@ -14,13 +14,11 @@ which all individuals receive a specified intervention, enabling
 assessment of agreement between predicted risks under the intervention
 and observed outcomes in the pseudo-population corresponding to that
 intervention. Supports interventions with binary or categorical
-treatment levels, applied either at a single time point or as
-longitudinal treatment strategies with sequential treatment decisions.
-Performance measures supported are AUC (Area Under the receiving
-operating characteristic Curve), Brier score, observed-expected ratio,
-and calibration plots. Methods implemented in this package are based on
-work by [Keogh and Van Geloven
-(2024)](https://doi.org/10.1097/EDE.0000000000001713).
+treatment levels, applied at a single time point. Performance measures
+supported are AUC (Area Under the receiving operating characteristic
+Curve), Brier score, observed-expected ratio, and calibration plots.
+Methods implemented in this package are based on work by [Keogh and Van
+Geloven (2024)](https://doi.org/10.1097/EDE.0000000000001713).
 
 ## Installation
 
@@ -311,28 +309,17 @@ A more detailed motivation is given in [this
 vignette](https://survival-lumc.github.io/ipeval/articles/ipeval.html).
 How to use this package for survival data is given in [time-to-event
 vignette](https://survival-lumc.github.io/ipeval/articles/time-to-event.html).
-In [this
-vignette](https://survival-lumc.github.io/ipeval/articles/longitudinal.html),
-we demonstrate usage for longitudinal treatments with time dependent
-confounding.
 
 # Package index
 
 ## All functions
 
-- [`add_lag_terms()`](https://survival-lumc.github.io/ipeval/reference/add_lag_terms.md)
-  : Add lagged versions of a longitudinal variable
 - [`ip_score()`](https://survival-lumc.github.io/ipeval/reference/ip_score.md)
   : Interventional prediction score
-- [`ip_score_long()`](https://survival-lumc.github.io/ipeval/reference/ip_score_long.md)
-  : Interventional prediction score for longitudinal treatment
-  strategies
 - [`observed_score()`](https://survival-lumc.github.io/ipeval/reference/observed_score.md)
   : Performance in observed dataset
 - [`plot(`*`<ip_score>`*`)`](https://survival-lumc.github.io/ipeval/reference/plot.ip_score.md)
   : Plot calibration curve for an ip_score object
-- [`wide_to_long()`](https://survival-lumc.github.io/ipeval/reference/wide_to_long.md)
-  : Convert wide longitudinal data to long format
 
 # Articles
 
@@ -340,10 +327,5 @@ confounding.
 
 - [ipeval: an R package for evaluating predictions under
   interventions](https://survival-lumc.github.io/ipeval/articles/ipeval.md):
-- [Generating longitudinal data with time-dependent confounding and
-  fitting Marginal Structural Cox
-  Models](https://survival-lumc.github.io/ipeval/articles/longitudinal-data-and-cox-models.md):
-- [Evaluating predictions under longitudinal
-  interventions](https://survival-lumc.github.io/ipeval/articles/longitudinal.md):
 - [Evaluating performance in time-to-event
   data](https://survival-lumc.github.io/ipeval/articles/time-to-event.md):

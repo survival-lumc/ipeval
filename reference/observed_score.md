@@ -104,7 +104,7 @@ observed_score(
 )
 #> 
 #>       model   auc brier oeratio
-#>  null model 0.500 0.211   1.000
-#>         ran 0.467 0.346   0.612
-#>         mod 0.760 0.173   1.000
+#>  null model 0.500 0.224   1.000
+#>         ran 0.525 0.318   0.688
+#>         mod 0.742 0.188   1.000
 ```
