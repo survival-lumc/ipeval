@@ -2,13 +2,13 @@
 
 ## Abstract
 
-We present the R package ipeval, which facilitates evaluation of the
-predictive performance of models that enable predictions to be generated
-under hypothetical intervention settings using observational data. The
-package currently supports binary outcomes and time-to-event outcomes
-under binary (point) interventions. It implements methods to assess
-counterfactual predictive performance using inverse probability of
-treatment weighting (IPTW).
+We present the R package ipeval, which facilitates the evaluation, using
+observational data, of the predictive performance of models that enable
+predictions to be generated under hypothetical intervention settings.
+The package currently supports binary outcomes and time-to-event
+outcomes under binary (point) interventions. It implements methods to
+assess counterfactual predictive performance using inverse probability
+of treatment weighting (IPTW).
 
 ## Introduction
 
@@ -75,7 +75,10 @@ individuals who received a given treatment to represent similar
 individuals who did not receive this treatment. Validity of this
 approach relies on standard causal assumptions: conditional
 exchangeability, consistency, positivity, and correct specification of
-the treatment model. More details are given elsewhere.^(1,6,7)
+the treatment model. By default, the package functions explicitly
+display these assumptions, highlighting that results may be biased if
+they are violated. More details on the methods underlying IPTW are given
+elsewhere.^(1,6,7)
 
 Predictive performance under a given intervention is then evaluated by
 comparing estimated risks with observed outcomes in the weighted
