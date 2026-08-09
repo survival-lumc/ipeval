@@ -92,8 +92,9 @@ strategies:</p>
 </ul>
 <p>In <a href="longitudinal-data-and-cox-models.html">the previous
 vignette</a>, we show how such predictions can be obtained from a
-marginal structural Cox model (and how longitidunial data could be
-simulated). Here, we focus on evaluating those predictions.</p>
+marginal structural Cox model (and how longitudinal data could be
+simulated). Here, we focus on evaluating those predictions. We will
+start from a wide-form dataset called df_val.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">df_val</span><span class="op">)</span></span>
 <span><span class="co">#&gt;   id       time status A0 A1 A2 A3 A4          L0         L1         L2</span></span>
@@ -126,10 +127,11 @@ status,</li>
 covariates, with one row per subject and visit,</li>
 <li>a model describing the treatment assignment mechanism.</li>
 </ul>
-<p>The long dataset must include all variables used in the treatment
-model. In our example, treatment is assumed to depend on the value of L
-at the current visit and the treatment value at the previous visit, so
-the variables L, A, and A_lag_1 are required.</p>
+<p>The long dataset must include all variables that are confounders of
+the treatment-outcome relation. In our example, we assume the treatment
+model needs to include the value of L at the current visit and the
+treatment value at the previous visit, so the variables L, A, and
+A_lag_1 are required.</p>
 <p>This package provides the convenience functions
 <code><a href="../reference/wide_to_long.html">wide_to_long()</a></code> and <code><a href="../reference/add_lag_terms.html">add_lag_terms()</a></code> to help
 reshape your data in this way.</p>
@@ -327,12 +329,12 @@ visits and leaves subsequent treatment unconstrained:</p>
 <h2 id="censoring-dependent-on-time-varying-variables">Censoring dependent on time varying variables<a class="anchor" aria-label="anchor" href="#censoring-dependent-on-time-varying-variables"></a>
 </h2>
 <p>In the previous examples, we did not specify the censoring mechanism.
-By default, the censoring mechanism is assumed to be (marginally)
-independent and the censoring weights are estimating using Kaplan-Meier.
-It is also possible to specify a Cox censoring model where censoring may
-depent on (time-varying) covariates. These variables should then be
-available as columns in <code>data_long</code>. As a demonstration, this
-can be achieved as follows:</p>
+By default, censoring is assumed to be (marginally) independent of the
+time-to-event and the censoring weights are estimating using
+Kaplan-Meier. It is also possible to specify a Cox censoring model where
+censoring may depend on (time-varying) covariates. These variables
+should then be available as columns in <code>data_long</code>. As a
+demonstration, this can be achieved as follows:</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ip_score_long.html">ip_score_long</a></span><span class="op">(</span></span>
 <span>  predictions <span class="op">=</span> <span class="va">risk_under_1</span>,</span>

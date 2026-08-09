@@ -29,8 +29,9 @@ Suppose we have estimated risks under two intervention strategies:
 In [the previous
 vignette](https://survival-lumc.github.io/ipeval/articles/longitudinal-data-and-cox-models.md),
 we show how such predictions can be obtained from a marginal structural
-Cox model (and how longitidunial data could be simulated). Here, we
-focus on evaluating those predictions.
+Cox model (and how longitudinal data could be simulated). Here, we focus
+on evaluating those predictions. We will start from a wide-form dataset
+called df_val.
 
 ``` r
 
@@ -68,10 +69,11 @@ interventions using inverse-probability weighting. It requires:
   covariates, with one row per subject and visit,
 - a model describing the treatment assignment mechanism.
 
-The long dataset must include all variables used in the treatment model.
-In our example, treatment is assumed to depend on the value of L at the
-current visit and the treatment value at the previous visit, so the
-variables L, A, and A_lag_1 are required.
+The long dataset must include all variables that are confounders of the
+treatment-outcome relation. In our example, we assume the treatment
+model needs to include the value of L at the current visit and the
+treatment value at the previous visit, so the variables L, A, and
+A_lag_1 are required.
 
 This package provides the convenience functions
 [`wide_to_long()`](https://survival-lumc.github.io/ipeval/reference/wide_to_long.md)
@@ -288,12 +290,12 @@ ip_score_long(
 ## Censoring dependent on time varying variables
 
 In the previous examples, we did not specify the censoring mechanism. By
-default, the censoring mechanism is assumed to be (marginally)
-independent and the censoring weights are estimating using Kaplan-Meier.
-It is also possible to specify a Cox censoring model where censoring may
-depent on (time-varying) covariates. These variables should then be
-available as columns in `data_long`. As a demonstration, this can be
-achieved as follows:
+default, censoring is assumed to be (marginally) independent of the
+time-to-event and the censoring weights are estimating using
+Kaplan-Meier. It is also possible to specify a Cox censoring model where
+censoring may depend on (time-varying) covariates. These variables
+should then be available as columns in `data_long`. As a demonstration,
+this can be achieved as follows:
 
 ``` r
 
