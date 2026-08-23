@@ -1,6 +1,6 @@
 # Changelog
 
-## ipeval (development version)
+## ipeval 0.1.1
 
 - Added support for categorical treatments.
 - Refactored code to be more readable, reusable and slightly faster.
