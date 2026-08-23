@@ -128,7 +128,7 @@ plot.ip_score <- function(x,
 
   # plot the calibration plot showing all models in 1
 
-  par(pty = pty)
+  graphics::par(pty = pty)
   plot(1, type = "n",
        xlim = xlim, ylim = ylim,
        asp = asp, xlab = xlab, ylab = ylab)
@@ -164,7 +164,7 @@ plot.ip_score <- function(x,
 
   if (!is.null(x$bootstrap)) {
     for (m in models) {
-      par(pty = pty)
+      graphics::par(pty = pty)
       plot(1, type = "n",
            xlim = xlim, ylim = ylim,
            xlab = xlab, ylab = ylab,
