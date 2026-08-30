@@ -13,7 +13,7 @@ assigned the longitudinal treatment strategy of interest."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">ipeval</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -258,6 +258,15 @@ censoring is assumed to occur after events at the same time point, but after
 reversing the indicator the opposite ordering is assumed. A possible
 workaround is to add a small positive offset (`epsilon`) to all censoring
 times before fitting the censoring model.</p>
+<p>When supplying time-to-event data in which some subjects have follow-up
+beyond the specified time horizon, the full follow-up time is used when
+estimating the censoring distribution, rather than truncating follow-up at
+the prediction horizon. This does not affect the IPCW when the censoring
+distribution is estimated using the Kaplan-Meier estimator, but it can
+affect the IPCW when using a Cox model. If the censoring model should be
+estimated using information only up to the prediction horizon, the user must
+administratively censor subjects at the prediction horizon before supplying
+the data to `ip_score_long()`.</p>
 <p>Bootstrapping is not possible when manually specifiying the IPTW/IPCW as
 numeric vectors. If specifying a model user-defined function that computes the
 ITPW/IPCW given data, it is possible. The given function will be called on

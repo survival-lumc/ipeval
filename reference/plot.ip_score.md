@@ -28,6 +28,8 @@ plot(
 
   The \`ip_score\` object returned by
   [`ip_score`](https://survival-lumc.github.io/ipeval/reference/ip_score.md)
+  or
+  [`ip_score_long`](https://survival-lumc.github.io/ipeval/reference/ip_score_long.md)
 
 - xlim:
 
@@ -87,19 +89,25 @@ inverse-probability-weighted proportion of 'observed' events.
 The observed and predicted calibration subgroup coordinates are computed
 by the
 [`ip_score`](https://survival-lumc.github.io/ipeval/reference/ip_score.md)
+or
+[`ip_score_long`](https://survival-lumc.github.io/ipeval/reference/ip_score_long.md)
 function and are stored in \`x\$score\$calplot\`, where \`x\` is the
 \`ip_score\` object. These raw values can be used to create custom
 calibration plots when additional control is needed.
 
 If
 [`ip_score`](https://survival-lumc.github.io/ipeval/reference/ip_score.md)
+or
+[`ip_score_long`](https://survival-lumc.github.io/ipeval/reference/ip_score_long.md)
 was run with bootstrap resampling (\`bootstrap \> 0\`), additional
 panels are produced for every evaluated model showing the calibration
 curves from all bootstrap replicate in grey.
 
 This method is available only when "calplot" was included in the
 \`metrics\` argument of
-[`ip_score`](https://survival-lumc.github.io/ipeval/reference/ip_score.md).
+[`ip_score`](https://survival-lumc.github.io/ipeval/reference/ip_score.md)
+or
+[`ip_score_long`](https://survival-lumc.github.io/ipeval/reference/ip_score_long.md).
 
 ## Examples
 

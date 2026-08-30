@@ -9,11 +9,12 @@ which all individuals receive a specified intervention, enabling
 assessment of agreement between predicted risks under the intervention
 and observed outcomes in the pseudo-population corresponding to that
 intervention. Supports interventions with binary or categorical
-treatment levels, applied at a single time point. Performance measures
-supported are AUC (Area Under the receiving operating characteristic
-Curve), Brier score, observed-expected ratio, and calibration plots.
-Methods implemented in this package are based on work by Keogh and Van
-Geloven (2024)
+treatment levels, applied either at a single time point or as
+longitudinal treatment strategies with sequential treatment decisions.
+Performance measures supported are AUC (Area Under the receiving
+operating characteristic Curve), Brier score, observed-expected ratio,
+and calibration plots. Methods implemented in this package are based on
+work by Keogh and Van Geloven (2024)
 [doi:10.1097/EDE.0000000000001713](https://doi.org/10.1097/EDE.0000000000001713)
 .
 

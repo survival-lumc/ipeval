@@ -19,7 +19,9 @@
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/time-to-event.html">Evaluating performance in time-to-event data</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/longitudinal-data-and-cox-models.html">Generating longitudinal data with time-dependent confounding and fitting Marginal Structural Cox Models</a></li>
+    <li><a class="dropdown-item" href="../articles/longitudinal.html">Evaluating predictions under longitudinal interventions</a></li>
+    <li><a class="dropdown-item" href="../articles/time-to-event.html">Evaluating performance in time-to-event data</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -48,10 +50,24 @@
 
       <dl><dt>
 
+          <code><a href="add_lag_terms.html">add_lag_terms()</a></code>
+
+        </dt>
+        <dd>Add lagged versions of a longitudinal variable</dd>
+
+        <dt>
+
           <code><a href="ip_score.html">ip_score()</a></code>
 
         </dt>
         <dd>Interventional prediction score</dd>
+
+        <dt>
+
+          <code><a href="ip_score_long.html">ip_score_long()</a></code>
+
+        </dt>
+        <dd>Interventional prediction score for longitudinal treatment strategies</dd>
 
         <dt>
 
@@ -66,6 +82,13 @@
 
         </dt>
         <dd>Plot calibration curve for an ip_score object</dd>
+
+        <dt>
+
+          <code><a href="wide_to_long.html">wide_to_long()</a></code>
+
+        </dt>
+        <dd>Convert wide longitudinal data to long format</dd>
       </dl></div>
   </main></div>
 
