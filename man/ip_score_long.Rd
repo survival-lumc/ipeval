@@ -179,6 +179,16 @@ reversing the indicator the opposite ordering is assumed. A possible
 workaround is to add a small positive offset (`epsilon`) to all censoring
 times before fitting the censoring model.
 
+When supplying time-to-event data in which some subjects have follow-up
+beyond the specified time horizon, the full follow-up time is used when
+estimating the censoring distribution, rather than truncating follow-up at
+the prediction horizon. This does not affect the IPCW when the censoring
+distribution is estimated using the Kaplan-Meier estimator, but it can
+affect the IPCW when using a Cox model. If the censoring model should be
+estimated using information only up to the prediction horizon, the user must
+administratively censor subjects at the prediction horizon before supplying
+the data to `ip_score_long()`.
+
 Bootstrapping is not possible when manually specifiying the IPTW/IPCW as
 numeric vectors. If specifying a model user-defined function that computes the
 ITPW/IPCW given data, it is possible. The given function will be called on
