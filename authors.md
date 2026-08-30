@@ -13,7 +13,7 @@
 ## Citation
 
 Source:
-[`DESCRIPTION`](https://github.com/survival-lumc/ipeval/blob/master/DESCRIPTION)
+[`DESCRIPTION`](https://github.com/survival-lumc/ipeval/blob/v0.1.1/DESCRIPTION)
 
 van Egeraat J, van Geloven N, Keogh R (2026). *ipeval: Interventional
 Prediction Evaluation*. R package version 0.1.1,

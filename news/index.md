@@ -2,6 +2,8 @@
 
 ## ipeval 0.1.1
 
+CRAN release: 2026-08-29
+
 - Added support for categorical treatments.
 - Refactored code to be more readable, reusable and slightly faster.
 - Removed support for stablized IPT-weights, as they result in exact
