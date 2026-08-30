@@ -1,5 +1,7 @@
 # ipeval (development version)
 
+* Added support for longitudinal treatments with time-dependent confounding.
+
 # ipeval 0.1.1
 
 * Added support for categorical treatments.

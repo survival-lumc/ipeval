@@ -28,12 +28,63 @@ bootstrap_iteration <- function(ip_object, matchcall, call_env) {
   return(score)
 }
 
+bootstrap_iteration_long <- function(ip_object, matchcall, call_env) {
+  the_call <- matchcall
+
+  # extract the data and predictions from the call/ip_object
+  data_outcome <- eval(the_call$data_outcome, call_env)
+  data_long <- eval(the_call$data_long, call_env)
+  predictions <- ip_object$predictions
+
+  # sample them
+  bs_sample <- sample(nrow(data_outcome), size = nrow(data_outcome), replace = T)
+  bs_data_outcome <- data_outcome[bs_sample, ]
+  bs_predictions <- lapply(predictions, function(x) x[bs_sample])
+  sampled_ids <- bs_data_outcome$id
+
+  # sampling long data is a bit more tedious:
+  idx_list <- split(seq_len(nrow(data_long)), data_long$id)
+  rows <- unlist(idx_list[as.character(sampled_ids)], use.names = FALSE)
+  bs_data_long <- data_long[rows, ]
+
+  n_rows_per_subject <- lengths(idx_list[as.character(sampled_ids)])
+
+  # assign new ids ranging from 1:n
+  bs_data_long$id <- rep(
+    seq_along(sampled_ids),
+    times = n_rows_per_subject
+  )
+  bs_data_outcome$id <- seq_along(sampled_ids)
+
+  # rerun the call with bootstrapped data & predictions
+  the_call$data_outcome <- quote(bs_data_outcome)
+  the_call$data_long <- quote(bs_data_long)
+  the_call$predictions <- quote(bs_predictions)
+  the_call$bootstrap <- 0
+  the_call$null_model <- FALSE
+  the_call$strip_ipt_models <- TRUE
+
+  score <- eval(
+    the_call,
+    envir = list(
+      bs_data_outcome = bs_data_outcome,
+      bs_data_long = bs_data_long,
+      bs_predictions = bs_predictions
+    ),
+    enclos = call_env
+  )$score
+
+  return(score)
+}
+
 bootstrap <- function(ip_object, matchcall, call_env, iterations, progress) {
   b <- lapply_progress(
     as.list(1:iterations),
     function(x) {
       if (identical(class(ip_object), "ip_score")) {
         return(bootstrap_iteration(ip_object, matchcall, call_env))
+      } else if ("ip_score_long" %in% class(ip_object)) {
+        return(bootstrap_iteration_long(ip_object, matchcall, call_env))
       } else {
         stop("unknown class ", class(ip_object), " found for bootstrapping")
       }

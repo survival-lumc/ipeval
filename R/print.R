@@ -46,20 +46,21 @@ print.ip_score <- function(x, ...) {
 #' events.
 #'
 #' The observed and predicted calibration subgroup coordinates are computed by the
-#' \code{\link{ip_score}} function and are stored
+#' \code{\link{ip_score}} or \code{\link{ip_score_long}} function and are stored
 #' in `x$score$calplot`, where `x` is the `ip_score` object. These raw values
 #' can be used to create custom calibration plots when additional control is
 #' needed.
 #'
-#' If \code{\link{ip_score}} was run with
+#' If \code{\link{ip_score}} or \code{\link{ip_score_long}} was run with
 #' bootstrap resampling (`bootstrap > 0`), additional panels are produced for
 #' every evaluated model showing the calibration curves from all bootstrap
 #' replicate in grey.
 #'
 #' This method is available only when "calplot" was included in the `metrics`
-#' argument of \code{\link{ip_score}}.
+#' argument of \code{\link{ip_score}} or \code{\link{ip_score_long}}.
 #'
-#' @param x The `ip_score` object returned by \code{\link{ip_score}}
+#' @param x The `ip_score` object returned by \code{\link{ip_score}} or
+#'   \code{\link{ip_score_long}}
 #' @param xlim The x limits of the plot, c(x1, x2)
 #' @param ylim The y limits of the plot, c(y1, y2)
 #' @param pty A character specifying the type of plot region to be used; "s"
@@ -225,12 +226,27 @@ assumptions <- function(x) {
   pp <- x$pseudopop$ids
   horizon <- x$outcome$time_horizon
 
-  # placeholders for future support for longitudinal trt
-  level <- "level"
-  received <- "received"
+  if ("ip_score_long" %in% class(x)) {
+    level <- "strategy"
+  } else {
+    level <- "level"
+  }
 
-  pp("Estimation of the performance of the prediction model in a pseudopopulation
+  if ("ip_score_long" %in% class(x)) {
+    received <- "were compliant to"
+  } else {
+    received <- "received"
+  }
+
+
+  if (!grepl("*", trt_val, fixed = TRUE)) {
+    pp("Estimation of the performance of the prediction model in a pseudopopulation
      where everyone's treatment ", trt_col, " was set to ", trt_val, ".")
+  } else {
+    pp("Estimation of the performance of the prediction model in a pseudopopulation
+     where everyone's treatment ", trt_col, " was set to ", trt_val,
+       ", where * can be any value as would normally be observed.")
+  }
 
   if (x$outcome$type == "binary") {
     pp("The pseudopopulation is constructed from ", sum(pp),
@@ -257,7 +273,7 @@ assumptions <- function(x) {
 
   pp("- Conditional exchangeability: after adjustment for the covariates used to construct
   the inverse probability of treatment weights (IPTW), i.e., ", confounders,
-     ", there is no unmeasured confounding for the relation between treatment and outcome.")
+  ", there is no unmeasured confounding for the relation between treatment and outcome.")
 
   pp("- Conditional positivity: the probability of receiving treatment ", level, " ",
      trt_val, " should be greater than zero for each value (combination) of the
@@ -317,20 +333,20 @@ assumptions <- function(x) {
 
     switch(x$ipc$method,
 
-           KM = {
-             pp("- The censoring distribution was estimated nonparametrically using
+    KM = {
+      pp("- The censoring distribution was estimated nonparametrically using
              the Kaplan-Meier estimator. The probability of remaining uncensored
             is ")
-             pp("  ", print_km(x$ipc$model, horizon),
-                ". See also $ipc$model.")
-           },
-           cox = {
-             pp("- Correctly specified censoring model. The estimated censoring
+      pp("  ", print_km(x$ipc$model, horizon),
+         ". See also $ipc$model.")
+    },
+    cox = {
+      pp("- Correctly specified censoring model. The estimated censoring
       model is ")
-             pp(" ", print_censor_model(x$ipc$model), ". See also $ipc$model.")
-           },
+      pp(" ", print_censor_model(x$ipc$model), ". See also $ipc$model.")
+    },
 
-           pp("- The supplied inverse probability of censoring weights (IPCW) are
+    pp("- The supplied inverse probability of censoring weights (IPCW) are
        assumed to be valid.")
     )
   }
@@ -375,20 +391,19 @@ print_km <- function(km, time_horizon) {
 }
 
 pretty_trt <- function(trt_of_interest) {
-  # Future version of package supports longitudinal trt (with n > 1)
   n <- length(trt_of_interest)
   if (n == 1) {
     return(trt_of_interest)
   } else if (n > 1) {
     return(
       paste0("{",
-             paste0(
-               sapply(
-                 trt_of_interest,
-                 function(x) { if (is.na(x)) "*" else as.character(x) }
-               ),
-               collapse = ", "
-             ), "}")
+      paste0(
+        sapply(
+          trt_of_interest,
+          function(x) { if (is.na(x)) "*" else as.character(x) }
+        ),
+        collapse = ", "
+      ), "}")
     )
   } else {
     return("")

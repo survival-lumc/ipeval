@@ -19,7 +19,8 @@
 )
 }
 \arguments{
-\item{x}{The `ip_score` object returned by \code{\link{ip_score}}}
+\item{x}{The `ip_score` object returned by \code{\link{ip_score}} or
+\code{\link{ip_score_long}}}
 
 \item{xlim}{The x limits of the plot, c(x1, x2)}
 
@@ -60,18 +61,18 @@ y-coordinate is the inverse-probability-weighted proportion of 'observed'
 events.
 
 The observed and predicted calibration subgroup coordinates are computed by the
-\code{\link{ip_score}} function and are stored
+\code{\link{ip_score}} or \code{\link{ip_score_long}} function and are stored
 in `x$score$calplot`, where `x` is the `ip_score` object. These raw values
 can be used to create custom calibration plots when additional control is
 needed.
 
-If \code{\link{ip_score}} was run with
+If \code{\link{ip_score}} or \code{\link{ip_score_long}} was run with
 bootstrap resampling (`bootstrap > 0`), additional panels are produced for
 every evaluated model showing the calibration curves from all bootstrap
 replicate in grey.
 
 This method is available only when "calplot" was included in the `metrics`
-argument of \code{\link{ip_score}}.
+argument of \code{\link{ip_score}} or \code{\link{ip_score_long}}.
 }
 \examples{
 n <- 1000
