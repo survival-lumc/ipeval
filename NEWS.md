@@ -1,3 +1,6 @@
+# ipeval 0.1.2
+
+
 # ipeval 0.1.1
 
 * Added support for categorical treatments.
