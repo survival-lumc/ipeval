@@ -225,6 +225,7 @@ ip_score <- function(object, data, outcome, treatment_formula,
   # do not allow bootstrap if iptw are given as fixed vector
   is_bootstrap_allowed(bootstrap, iptw, ipcw)
 
+
   # start gathering information required for the computation of metrics
   # in weighted pseudopop
   score_outcome <- extract_outcome(data, substitute(outcome), time_horizon)
@@ -256,6 +257,13 @@ ip_score <- function(object, data, outcome, treatment_formula,
   if (null_model) {
     score_predictions <- fit_null(score_pseudopop, score_outcome,
                                   score_predictions, score_ipt, score_ipc)
+  }
+
+  if ("scaled_brier" %in% metrics) {
+    stopifnot("null_model must be set to true as this is required to compute the scaled Brier score" =
+                names(score_predictions)[[1]] == "null model")
+    # Checking if null_model == TRUE doesn't quite work, because when bootstrapping,
+    # null_model is set to FALSE in each iteration.
   }
 
   # make object
@@ -371,7 +379,8 @@ compute_metrics <- function(ip_object) {
           obs_outcome = outcome,
           cf_pred = x,
           pseudo_i = ip_object$pseudopop$ids,
-          ipw = weights
+          ipw = weights,
+          null_preds = ip_object$predictions$`null model` # required for scaled brier score, may not exist but is loaded only when required
         )
       }
     )

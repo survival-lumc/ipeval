@@ -29,18 +29,11 @@ cf_brier <- function(obs_outcome, cf_pred, pseudo_i, ipw, ...) {
 }
 
 
-cf_brier_scaled <- function(obs_outcome, cf_pred, pseudo_i, ipw, ...) {
+cf_brier_scaled <- function(obs_outcome, cf_pred, pseudo_i, ipw, null_preds, ...) {
 
   brier <- cf_brier(obs_outcome, cf_pred, pseudo_i, ipw)
 
-  nullpred <- stats::weighted.mean(
-    x = obs_outcome[pseudo_i],
-    w = ipw[pseudo_i]
-  )
-  nullpreds <- rep(nullpred, length(obs_outcome))
-
-
-  brier_null <- cf_brier(obs_outcome, nullpreds, pseudo_i, ipw)
+  brier_null <- cf_brier(obs_outcome, null_preds, pseudo_i, ipw)
 
   (1 - brier/brier_null)*100
 
