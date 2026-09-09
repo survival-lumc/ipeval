@@ -1,4 +1,29 @@
 # input checks
+test_that("scaled brier score bootstrap confidence interval", {
+  set.seed(1)
+  n <- 1000
+  data <- data.frame(
+    L = rnorm(n, mean = 0),
+    P = rnorm(n, mean = 0)
+  )
+  data$A <- rbinom(n, 1, plogis(0.5+0.2*data$L))
+  data$Y <- rbinom(n, 1, plogis(0.3*data$L + 0.6*data$P - 0.5*data$A))
+
+  model1 <- glm(Y ~ P, family = "binomial", data = data)
+
+  expect_error(ip_score(model1, data, Y, A ~ L, 0, null_model = F),
+               regexp = "null_model must be set to true ")
+
+
+  ipobj <- ip_score(model1, data, Y, A ~ L, 0, null_model = T, bootstrap = 10)
+
+  expect_equal(
+    ipobj$bootstrap$raw$scaled_brier$`null model`,
+    rep(0, 10)
+  )
+
+})
+
 
 test_that("wrong input throws sensible errors", {
   n <- 1000
@@ -306,7 +331,7 @@ test_that("ip_score metrics equal to unobserved CF metrics, binary outcome", {
     outcome = Y,
     treatment_formula = A ~ L,
     treatment_of_interest = 0,
-    null_model = FALSE,
+    null_model = TRUE,
     metrics = c("auc", "brier", "oeratio", "scaled_brier")
   )
 
@@ -326,10 +351,12 @@ test_that("ip_score metrics equal to unobserved CF metrics, binary outcome", {
   score$oe <- mean(data$Y0)/mean(Y0_predicted)
 
 
-  expect_equal(unname(ip_score$score$auc), score$AUC$score$AUC, tolerance = 0.01)
-  expect_equal(unname(ip_score$score$brier), score$Brier$score$Brier[[2]], tolerance = 0.01)
-  expect_equal(unname(ip_score$score$oeratio), score$oe, tolerance = 0.01)
-  expect_equal(unname(ip_score$score$scaled_brier), scaled_brier, tolerance = 0.02)
+  expect_equal(unname(ip_score$score$auc[[2]]), score$AUC$score$AUC, tolerance = 0.01)
+  expect_equal(unname(ip_score$score$brier[[2]]), score$Brier$score$Brier[[2]], tolerance = 0.01)
+  expect_equal(unname(ip_score$score$oeratio[[2]]), score$oe, tolerance = 0.01)
+  expect_equal(unname(ip_score$score$scaled_brier[[2]]), scaled_brier, tolerance = 0.02)
+
+  expect_equal(unname(ip_score$score$scaled_brier[[1]]), 0)
 })
 
 test_that("ip_score metrics equal to unobserved CF metrics, surv, uncensored", {
@@ -366,7 +393,7 @@ test_that("ip_score metrics equal to unobserved CF metrics, surv, uncensored", {
     time_horizon = horizon,
     cens_model = "KM",
     cens_formula = ~ 1,
-    null_model = FALSE
+    null_model = TRUE
   )
 
   time0_predicted <- predict_CF(model, data, "A", 0, horizon)
@@ -379,9 +406,13 @@ test_that("ip_score metrics equal to unobserved CF metrics, surv, uncensored", {
   )
   score$oe <- mean(data$time0 <= horizon)/mean(time0_predicted)
 
-  expect_equal(unname(ip_score$score$auc), score$AUC$score$AUC, tolerance = 0.01)
-  expect_equal(unname(ip_score$score$brier), score$Brier$score$Brier, tolerance = 0.01)
-  expect_equal(unname(ip_score$score$oeratio), score$oe, tolerance = 0.01)
+  expect_equal(unname(ip_score$score$auc[[2]]), score$AUC$score$AUC, tolerance = 0.01)
+  expect_equal(unname(ip_score$score$brier[[2]]), score$Brier$score$Brier, tolerance = 0.01)
+  expect_equal(unname(ip_score$score$oeratio[[2]]), score$oe, tolerance = 0.01)
+
+  expect_equal(unname(ip_score$score$auc[[1]]), 0.5)
+  expect_equal(unname(ip_score$score$oeratio[[1]]), 1)
+  expect_equal(unname(ip_score$score$scaled_brier[[1]]), 0)
 })
 
 test_that("ip_score metrics equal to unobserved CF metrics, surv, censor at T", {
@@ -421,7 +452,8 @@ test_that("ip_score metrics equal to unobserved CF metrics, surv, censor at T", 
     time_horizon = horizon,
     cens_model = "KM",
     cens_formula = ~ 1,
-    null_model = FALSE
+    null_model = FALSE,
+    metrics = c("auc", "oeratio", "brier")
   )
 
   ip_score_cox <- ip_score(
@@ -433,7 +465,8 @@ test_that("ip_score metrics equal to unobserved CF metrics, surv, censor at T", 
     time_horizon = horizon,
     cens_model = "cox",
     cens_formula = ~ 1,
-    null_model = FALSE
+    null_model = FALSE,
+    metrics = c("auc", "oeratio", "brier")
   )
 
   expect_equal(
@@ -503,7 +536,7 @@ test_that("ip_score metrics equal to unobserved CF metrics, surv, KM censor", {
     time_horizon = horizon,
     cens_model = "KM",
     cens_formula = ~ 1,
-    null_model = FALSE
+    null_model = TRUE
   )
 
   time0_predicted <- predict_CF(model, data, "A", 0, horizon)
@@ -516,9 +549,15 @@ test_that("ip_score metrics equal to unobserved CF metrics, surv, KM censor", {
   )
   score$oe <- mean(data$time0 <= horizon)/mean(time0_predicted)
 
-  expect_equal(unname(ip_score$score$auc), score$AUC$score$AUC, tolerance = 0.01)
-  expect_equal(unname(ip_score$score$brier), score$Brier$score$Brier, tolerance = 0.01)
-  expect_equal(unname(ip_score$score$oeratio), score$oe, tolerance = 0.01)
+  expect_equal(unname(ip_score$score$auc[[2]]), score$AUC$score$AUC, tolerance = 0.01)
+  expect_equal(unname(ip_score$score$brier[[2]]), score$Brier$score$Brier, tolerance = 0.01)
+  expect_equal(unname(ip_score$score$oeratio[[2]]), score$oe, tolerance = 0.01)
+
+  expect_equal(unname(ip_score$score$auc[[1]]), 0.5)
+  expect_equal(unname(ip_score$score$scaled_brier[[1]]), 0)
+  expect_equal(unname(ip_score$score$oeratio[[1]]), 1)
+
+
 
   # also try treatment == 1 for good measure
   ip_score1 <- ip_score(
@@ -530,7 +569,8 @@ test_that("ip_score metrics equal to unobserved CF metrics, surv, KM censor", {
     time_horizon = horizon,
     cens_model = "KM",
     cens_formula = ~ 1,
-    null_model = FALSE
+    null_model = TRUE,
+    metrics = c("auc", "brier", "oeratio")
   )
 
   time1_predicted <- predict_CF(model, data, "A", 1, horizon)
@@ -543,9 +583,9 @@ test_that("ip_score metrics equal to unobserved CF metrics, surv, KM censor", {
   )
   score1$oe <- mean(data$time1 <= horizon)/mean(time1_predicted)
 
-  expect_equal(unname(ip_score1$score$auc), score1$AUC$score$AUC, tolerance = 0.01)
-  expect_equal(unname(ip_score1$score$brier), score1$Brier$score$Brier, tolerance = 0.01)
-  expect_equal(unname(ip_score1$score$oeratio), score1$oe, tolerance = 0.01)
+  expect_equal(unname(ip_score1$score$auc[[2]]), score1$AUC$score$AUC, tolerance = 0.01)
+  expect_equal(unname(ip_score1$score$brier[[2]]), score1$Brier$score$Brier, tolerance = 0.01)
+  expect_equal(unname(ip_score1$score$oeratio[[2]]), score1$oe, tolerance = 0.01)
 })
 
 test_that("ip_score metrics equal to unobserved CF metrics, surv, cox censor", {
@@ -588,7 +628,7 @@ test_that("ip_score metrics equal to unobserved CF metrics, surv, cox censor", {
     time_horizon = horizon,
     cens_model = "cox",
     cens_formula = ~ L + P + A,
-    null_model = FALSE
+    null_model = TRUE
   )
 
   time0_predicted <- predict_CF(model, data, "A", 0, horizon)
@@ -601,9 +641,9 @@ test_that("ip_score metrics equal to unobserved CF metrics, surv, cox censor", {
   )
   score$oe <- mean(data$time0 <= horizon)/mean(time0_predicted)
 
-  expect_equal(unname(ip_score$score$auc), score$AUC$score$AUC, tolerance = 0.01)
-  expect_equal(unname(ip_score$score$brier), score$Brier$score$Brier, tolerance = 0.01)
-  expect_equal(unname(ip_score$score$oeratio), score$oe, tolerance = 0.01)
+  expect_equal(unname(ip_score$score$auc[[2]]), score$AUC$score$AUC, tolerance = 0.01)
+  expect_equal(unname(ip_score$score$brier[[2]]), score$Brier$score$Brier, tolerance = 0.01)
+  expect_equal(unname(ip_score$score$oeratio[[2]]), score$oe, tolerance = 0.01)
 })
 
 
@@ -635,22 +675,27 @@ test_that("results are in between lower & upper bootstrap", {
     treatment_formula = A ~ L,
     treatment_of_interest = 0,
     bootstrap = 200,
-    null_model = FALSE,
+    null_model = TRUE,
     bootstrap_progress = FALSE
   )
 
   expect_true(
-    ip_score$score$auc > ip_score$bootstrap$results$auc[[1]][1] &
-      ip_score$score$auc < ip_score$bootstrap$results$auc[[1]][2]
+    ip_score$score$auc[[2]] > ip_score$bootstrap$results$auc[[2]][1] &
+      ip_score$score$auc[[2]] < ip_score$bootstrap$results$auc[[2]][2]
   )
   expect_true(
-    ip_score$score$brier > ip_score$bootstrap$results$brier[[1]][1] &
-      ip_score$score$brier < ip_score$bootstrap$results$brier[[1]][2]
+    ip_score$score$brier[[2]] > ip_score$bootstrap$results$brier[[2]][1] &
+      ip_score$score$brier[[2]] < ip_score$bootstrap$results$brier[[2]][2]
   )
   expect_true(
-    ip_score$score$oeratio > ip_score$bootstrap$results$oeratio[[1]][1] &
-      ip_score$score$oeratio < ip_score$bootstrap$results$oeratio[[1]][2]
+    ip_score$score$oeratio[[2]] > ip_score$bootstrap$results$oeratio[[2]][1] &
+      ip_score$score$oeratio[[2]] < ip_score$bootstrap$results$oeratio[[2]][2]
   )
+  expect_true(
+    ip_score$score$scaled_brier[[1]] == ip_score$bootstrap$results$scaled_brier[[1]][1] &
+      ip_score$score$scaled_brier[[1]] == ip_score$bootstrap$results$scaled_brier[[1]][2]
+  )
+
 })
 
 test_that("results are in between lower & upper bootstrap, surv, cox censor", {
@@ -690,7 +735,8 @@ test_that("results are in between lower & upper bootstrap, surv, cox censor", {
     cens_formula = ~ L + P + A,
     bootstrap = 100,
     bootstrap_progress = FALSE,
-    null_model = FALSE
+    null_model = FALSE,
+    metrics = c("auc", "brier", "oeratio")
   )
 
   expect_true(
