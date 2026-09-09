@@ -134,6 +134,7 @@ ip_score(
   ),
   data = df_val, 
   outcome = Y,
+  metrics = c("auc", "brier", "oeratio", "calplot"),
   treatment_formula = A ~ L, 
   treatment_of_interest = 0,
   null_model = FALSE
@@ -150,6 +151,7 @@ ip_score(
   ),
   data = df_val, 
   outcome = Y,
+  metrics = c("auc", "brier", "oeratio", "calplot"),
   treatment_formula = A ~ L, 
   treatment_of_interest = 1,
   null_model = FALSE,
