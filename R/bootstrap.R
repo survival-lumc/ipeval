@@ -9,12 +9,19 @@ bootstrap_iteration <- function(ip_object, matchcall, call_env) {
   bs_data <- data[bs_sample, ]
   bs_predictions <- lapply(predictions, function(x) x[bs_sample])
 
+
   # rerun the call, this time with bootstrapped data/predictions
   the_call$data <- quote(bs_data)
   the_call$object <- quote(bs_predictions)
   the_call$bootstrap <- 0
-  the_call$null_model <- FALSE
   the_call$strip_ipt_models <- TRUE
+
+  if (!is.null(the_call$null_model) && the_call$null_model == TRUE) {
+    # if we had set null_model to true, we will fit a new null model in each bootstrap
+    # iteration on the corresponding bootstrap sample
+    # so we remove the null model from the list of predictions
+    bs_predictions <- bs_predictions[-1]
+  }
 
   score <- eval(
     the_call,
