@@ -13,7 +13,7 @@ interest."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">ipeval</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -151,7 +151,8 @@ treatment level of interest (using the IPTW, as estimated using the
 treatment_formula or as given by the iptw argument). For time-to-event
 outcomes, the null model is also fitted using the IPCW, as estimated using
 the cens_formula, or as given by the ipcw argument. The null_model can be
-used as reference (baseline) model.</p></dd>
+used as reference (baseline) model. If bootstrapping, a new null model is
+fit during each bootstrap iteration.</p></dd>
 
 
 <dt id="arg-bootstrap">bootstrap<a class="anchor" aria-label="anchor" href="#arg-bootstrap"></a></dt>
@@ -256,9 +257,9 @@ censoring model.</p>
 beyond the specified time horizon, the full follow-up time is used when
 estimating the censoring distribution, rather than truncating follow-up at
 the prediction horizon. This does not affect the IPCW when the censoring
-distribution is estimated using the Kaplan-Meier estimator, but it can
-affect the IPCW when using a Cox model. If the censoring model should be
-estimated using information only up to the prediction horizon, the user must
+distribution is estimated using the Kaplan-Meier estimator, but it can affect
+the IPCW when using a Cox model. If the censoring model should be estimated
+using information only up to the prediction horizon, the user must
 administratively censor subjects at the prediction horizon before supplying
 the data to `ip_score()`.</p>
 <p>Bootstrapping is not possible when manually specifying the IPTW/IPCW as

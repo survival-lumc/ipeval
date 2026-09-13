@@ -284,15 +284,15 @@ ip_score(
 #> 
 #> scaled_brier
 #> 
-#>         model scaled_brier  lower     upper
-#>    null model        0.000 -0.127 -5.84e-05
-#>   naive model        0.795 -1.013  3.56e+00
-#>  causal model        4.226  2.943  6.08e+00
+#>         model scaled_brier lower upper
+#>    null model        0.000  0.00  0.00
+#>   naive model        0.795 -1.01  3.56
+#>  causal model        4.226  2.94  6.08
 #> 
 #> oeratio
 #> 
 #>         model oeratio lower upper
-#>    null model   1.000 0.946 1.057
+#>    null model   1.000 1.000 1.000
 #>   naive model   0.768 0.725 0.811
 #>  causal model   0.959 0.905 1.012
 ```

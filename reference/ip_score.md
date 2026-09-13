@@ -107,7 +107,9 @@ ip_score(
   treatment_formula or as given by the iptw argument). For time-to-event
   outcomes, the null model is also fitted using the IPCW, as estimated
   using the cens_formula, or as given by the ipcw argument. The
-  null_model can be used as reference (baseline) model.
+  null_model can be used as reference (baseline) model. If
+  bootstrapping, a new null model is fit during each bootstrap
+  iteration.
 
 - bootstrap:
 
