@@ -16,7 +16,7 @@ bootstrap_iteration <- function(ip_object, matchcall, call_env) {
   the_call$bootstrap <- 0
   the_call$strip_ipt_models <- TRUE
 
-  if (!is.null(the_call$null_model) && the_call$null_model == TRUE) {
+  if (names(bs_predictions)[1] == "null model") {
     # if we had set null_model to true, we will fit a new null model in each bootstrap
     # iteration on the corresponding bootstrap sample
     # so we remove the null model from the list of predictions
