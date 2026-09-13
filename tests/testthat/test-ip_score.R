@@ -1,8 +1,3 @@
-test_that("bootstrap/null model checks", {
-
-})
-
-
 # input checks
 test_that("wrong input throws sensible errors", {
   n <- 1000
@@ -653,18 +648,44 @@ test_that("results are in between lower & upper bootstrap", {
     bootstrap_progress = FALSE
   )
 
+
+  # model:
   expect_true(
-    ip_score$score$auc > ip_score$bootstrap$results$auc[[1]][1] &
-      ip_score$score$auc < ip_score$bootstrap$results$auc[[1]][2]
+    ip_score$score$auc[[2]] > ip_score$bootstrap$results$auc[[2]][1] &
+      ip_score$score$auc[[2]] < ip_score$bootstrap$results$auc[[2]][2]
   )
   expect_true(
-    ip_score$score$brier > ip_score$bootstrap$results$brier[[1]][1] &
-      ip_score$score$brier < ip_score$bootstrap$results$brier[[1]][2]
+    ip_score$score$brier[[2]] > ip_score$bootstrap$results$brier[[2]][1] &
+      ip_score$score$brier[[2]] < ip_score$bootstrap$results$brier[[2]][2]
   )
   expect_true(
-    ip_score$score$oeratio > ip_score$bootstrap$results$oeratio[[1]][1] &
-      ip_score$score$oeratio < ip_score$bootstrap$results$oeratio[[1]][2]
+    ip_score$score$oeratio[[2]] > ip_score$bootstrap$results$oeratio[[2]][1] &
+      ip_score$score$oeratio[[2]] < ip_score$bootstrap$results$oeratio[[2]][2]
   )
+  expect_true(
+    ip_score$score$scaled_brier[[2]] > ip_score$bootstrap$results$scaled_brier[[2]][1] &
+      ip_score$score$scaled_brier[[2]] < ip_score$bootstrap$results$scaled_brier[[2]][2]
+  )
+
+  # null model:
+  expect_true(
+    ip_score$score$auc[[1]] == ip_score$bootstrap$results$auc[[1]][[1]] &
+      ip_score$score$auc[[1]] == ip_score$bootstrap$results$auc[[1]][[2]] &
+      ip_score$score$auc[[1]] == 0.5
+  )
+  expect_true(
+    ip_score$score$brier[[1]] > ip_score$bootstrap$results$brier[[1]][[1]] &
+      ip_score$score$brier[[1]] < ip_score$bootstrap$results$brier[[1]][[2]]
+  )
+  expect_true(
+    ip_score$score$scaled_brier[[1]] == 0 &
+      all(ip_score$bootstrap$raw$scaled_brier[[1]] == rep(0, 200))
+  )
+  expect_true(
+    ip_score$score$oeratio[[1]] == 1 &
+      all(ip_score$bootstrap$raw$oeratio[[1]] == rep(1, 200))
+  )
+
 })
 
 test_that("results are in between lower & upper bootstrap, surv, cox censor", {
