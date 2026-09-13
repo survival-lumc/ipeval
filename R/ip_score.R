@@ -49,9 +49,9 @@
 #' beyond the specified time horizon, the full follow-up time is used when
 #' estimating the censoring distribution, rather than truncating follow-up at
 #' the prediction horizon. This does not affect the IPCW when the censoring
-#' distribution is estimated using the Kaplan-Meier estimator, but it can
-#' affect the IPCW when using a Cox model. If the censoring model should be
-#' estimated using information only up to the prediction horizon, the user must
+#' distribution is estimated using the Kaplan-Meier estimator, but it can affect
+#' the IPCW when using a Cox model. If the censoring model should be estimated
+#' using information only up to the prediction horizon, the user must
 #' administratively censor subjects at the prediction horizon before supplying
 #' the data to `ip_score()`.
 #'
@@ -114,7 +114,8 @@
 #'   treatment_formula or as given by the iptw argument). For time-to-event
 #'   outcomes, the null model is also fitted using the IPCW, as estimated using
 #'   the cens_formula, or as given by the ipcw argument. The null_model can be
-#'   used as reference (baseline) model.
+#'   used as reference (baseline) model. If bootstrapping, a new null model is
+#'   fit during each bootstrap iteration.
 #' @param bootstrap If this is an integer greater than 0, this indicates the
 #'   number of bootstrap iterations, used to compute 95\% confidence intervals
 #'   around the performance metrics based on percentiles of the bootstrap
@@ -577,6 +578,7 @@ get_ipcw <- function(cens_formula, data, cens_model, time_horizon,
 
 fit_null <- function(score_pseudopop, score_outcome, score_predictions,
                      score_ipt, score_ipc) {
+
   # fit a null on the pseudo-population that received treatment of
   # interest and remained uncensored. Add it to score_predictions.
   pseudo_ids <- score_pseudopop[[1]]

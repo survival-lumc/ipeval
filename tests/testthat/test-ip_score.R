@@ -1,5 +1,9 @@
-# input checks
+test_that("bootstrap/null model checks", {
 
+})
+
+
+# input checks
 test_that("wrong input throws sensible errors", {
   n <- 1000
   adminstrative_censor <- 10
@@ -16,6 +20,16 @@ test_that("wrong input throws sensible errors", {
   my_data$time <- ifelse(my_data$status == TRUE, my_data$time_uncensored, adminstrative_censor)
 
   predictions <- runif(n, 0, 1)
+
+  expect_error(
+    ip_score(list(predictions, "predictions" = predictions), data = my_data, outcome = status, A ~ L, 1),
+    "pass a named list"
+  )
+
+  expect_error(
+    ip_score(list(predictions, "null model" = predictions), my_data, status, A ~ L, 1),
+    "Please rename the `null model`"
+  )
 
   # object ------------------------------------------------------------------
   expect_error(
@@ -635,7 +649,7 @@ test_that("results are in between lower & upper bootstrap", {
     treatment_formula = A ~ L,
     treatment_of_interest = 0,
     bootstrap = 200,
-    null_model = FALSE,
+    null_model = TRUE,
     bootstrap_progress = FALSE
   )
 
