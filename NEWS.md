@@ -1,5 +1,5 @@
 # ipeval 0.1.2
-
+* fix: null model is now refitted during every bootstrap iteration.
 
 # ipeval 0.1.1
 
