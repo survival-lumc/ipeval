@@ -138,6 +138,14 @@ make_named_list <- function(object, substituteobject) {
 
     }
     names(object) <- newnames
+
+    stopifnot("Please pass a named list of predictions/models with unique names" =
+                length(unique(newnames)) == length(newnames));
+
+    if ("null model" %in% newnames) {
+      stop("Please rename the `null model` in the list of predictions/models, this is reserved for internal use.")
+    }
+
     return(object)
   }
 
