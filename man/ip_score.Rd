@@ -70,13 +70,18 @@ under outcome, reversing the event indicator, see details. KM is only
 supported when the right hand side of cens_formula is 1.}
 
 \item{cens_formula}{Model formula from which the right hand side is used in
-estimating the censoring probabilities. The left hand side must be left blank. E.g. ~ x1 + x2.}
+estimating the censoring probabilities. The left hand side must be left
+blank. E.g. ~ x1 + x2.}
 
-\item{null_model}{If TRUE fits a model without covariates that estimates the same probability for all subjects in data. The model is
-fitted using the reweighted data in which all subjects 'counterfactually'
-received the treatment level of interest (using the IPTW, as estimated
-using the treatment_formula or as given by the iptw argument). For
-time-to-event outcomes, the null model is also fitted using the IPCW, as estimated using the cens_formula, or as given by the ipcw argument. The null_model can be used as reference (baseline) model.}
+\item{null_model}{If TRUE fits a model without covariates that estimates the
+same probability for all subjects in data. The model is fitted using the
+reweighted data in which all subjects 'counterfactually' received the
+treatment level of interest (using the IPTW, as estimated using the
+treatment_formula or as given by the iptw argument). For time-to-event
+outcomes, the null model is also fitted using the IPCW, as estimated using
+the cens_formula, or as given by the ipcw argument. The null_model can be
+used as reference (baseline) model. If bootstrapping, a new null model is
+fit during each bootstrap iteration.}
 
 \item{bootstrap}{If this is an integer greater than 0, this indicates the
 number of bootstrap iterations, used to compute 95\% confidence intervals
@@ -155,15 +160,26 @@ The null model estimates are obtained as the weighted mean outcome in the subset
 computed using a weighted Kaplan-Meier estimator, which would be more
 efficient, but computationally slower.
 
-The censoring distribution is estimated with a Kaplan-Meier estimator implemented using `prodlim::prodlim(...,
-reverse = TRUE)`. This correctly estimates the censoring distribution when
-there are ties between event and censoring times.  When using a Cox model to
-estimate the censoring distribution, the event indicator is reversed. This
-does not preserve the usual tie-handling convention: in standard survival
-analysis, censoring is assumed to occur after events at the same time point,
-but after reversing the indicator the opposite ordering is assumed. A
-possible workaround is to add a small positive offset (`epsilon`) to all
-censoring times before fitting the censoring model.
+The censoring distribution is estimated with a Kaplan-Meier estimator
+implemented using `prodlim::prodlim(..., reverse = TRUE)`. This correctly
+estimates the censoring distribution when there are ties between event and
+censoring times.  When using a Cox model to estimate the censoring
+distribution, the event indicator is reversed. This does not preserve the
+usual tie-handling convention: in standard survival analysis, censoring is
+assumed to occur after events at the same time point, but after reversing the
+indicator the opposite ordering is assumed. A possible workaround is to add a
+small positive offset (`epsilon`) to all censoring times before fitting the
+censoring model.
+
+When supplying time-to-event data in which some subjects have follow-up
+beyond the specified time horizon, the full follow-up time is used when
+estimating the censoring distribution, rather than truncating follow-up at
+the prediction horizon. This does not affect the IPCW when the censoring
+distribution is estimated using the Kaplan-Meier estimator, but it can affect
+the IPCW when using a Cox model. If the censoring model should be estimated
+using information only up to the prediction horizon, the user must
+administratively censor subjects at the prediction horizon before supplying
+the data to `ip_score()`.
 
 Bootstrapping is not possible when manually specifying the IPTW/IPCW as
 numeric vectors. If specifying a user-defined function that computes the
