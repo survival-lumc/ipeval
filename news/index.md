@@ -2,6 +2,8 @@
 
 ## ipeval 0.1.2
 
+CRAN release: 2026-09-13
+
 - fix: null model is now refitted during every bootstrap iteration.
 - fix: stop early with error if duplicate names are given to models to
   validate.
