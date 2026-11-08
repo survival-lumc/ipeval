@@ -1,0 +1,130 @@
+---
+title: "long-weights-demo"
+output: html_document
+---
+
+```{r}
+library(ipeval)
+
+set.seed(123)
+
+treatment_of_interest <- c(0,1,0,1,0)
+
+pattern1 <- c(0,1,0,0,0)
+pattern2 <- c(0,1,0,1,1)
+pattern3 <- c(0,1,0,1,0)
+pattern4 <- c(0,1,1,1,1)
+
+data_long <- data.frame(id = c(rep(1,5), rep(2,5), rep(3,5), rep(4,5)),
+                        visit_time = rep(c(0,1,2,3,4), 4),
+                        A = c(pattern1, pattern2, pattern3, pattern4),
+                        L = rnorm(20))
+
+data_long$visit_compliant <- treatment_of_interest[data_long$visit_time+1] == data_long$A
+data_long$has_deviated <- unlist(tapply(data_long$visit_compliant, data_long$id, function(x) { cumsum(!x) >= 1}))
+
+
+
+data_wide <- reshape(data_long, direction = "wide", idvar = "id", timevar = "visit_time")
+data_wide <- data_wide[, c("id", paste0("A.", 0:4), paste0("L.", 0:4))]
+
+data_long$factor_visit_time <- factor(data_long$visit_time)
+
+print(data_wide)
+print(data_long)
+```
+
+# Long weights, old approach
+Fit model A ~ L*visit on all rows of data_long:
+
+```{r}
+weights_model <- glm(A ~ L * factor_visit_time, data = data_long, family = "binomial")
+```
+
+Compute probability of being assigned the treatment that they were assigned per visit:
+
+```{r}
+prob_A_is_1 <- predict.glm(weights_model, type= "response", newdata = data_long)
+prob_A_is_a <- ifelse(data_long$A == 1, prob_A_is_1, 1 - prob_A_is_1)
+visit_weight <- 1 / prob_A_is_a
+```
+
+Compute IPTW of each patient by taking the product, and set weight to 0/NA for those not compliant to entire treatment strategy:
+
+```{r}
+weights_approach1 <- tapply(visit_weight*data_long$visit_compliant, data_long$id, FUN = prod)
+weights_approach1
+```
+
+# Long weights, new approach 1
+Fit model A ~ L * visit on treatment-compliant rows of data_long, including the first non-compliant row p patient:
+
+```{r}
+in_model_building_dataset <- data_long$has_deviated
+data_long <- add_lag_terms(data_long, "has_deviated", lag = 1, fill = F)
+data_long$in_model_building_dataset <- !(data_long$has_deviated_lag_1)
+
+weights_model2 <- glm(A ~ L * factor_visit_time, data = data_long[data_long$in_model_building_dataset, ], family = "binomial")
+```
+
+Compute probability of being assigned the treatment that they were assigned per visit:
+
+```{r}
+prob_A_is_1 <- predict.glm(weights_model2, type= "response", newdata = data_long)
+prob_A_is_a <- ifelse(data_long$A == 1, prob_A_is_1, 1 - prob_A_is_1)
+visit_weight <- 1 / prob_A_is_a
+```
+
+Compute IPTW of each patient by taking the product, and set weight to 0/NA for those not compliant to entire treatment strategy:
+
+```{r}
+weights_approach2 <- tapply(visit_weight*data_long$visit_compliant, data_long$id, FUN = prod)
+weights_approach2
+```
+
+# Long weights, new approach 2
+Fit model artificially_censored ~ L * visit_time on treatment-compliant rows of data_long, including the first non-compliant row p patient:
+
+```{r}
+data_long$artificially_censored <- !(data_long$visit_compliant)
+weights_model3 <- glm(artificially_censored ~ L * factor_visit_time, data = data_long[data_long$in_model_building_dataset, ], family = "binomial")
+
+prob_censor_is_1 <- predict.glm(weights_model3, type= "response", newdata = data_long)
+prob_censor_is_c <- ifelse(data_long$artificially_censored == 1, prob_censor_is_1, 1 - prob_censor_is_1)
+visit_weight <- 1  / prob_censor_is_c
+```
+
+```{r}
+weights_approach3 <- tapply(visit_weight*data_long$visit_compliant, data_long$id, FUN = prod)
+weights_approach3
+```
+
+
+
+
+
+```{r}
+print(data_long[, c("id", "visit_time", "A", "visit_compliant", "has_deviated",
+                    "in_model_building_dataset", "artificially_censored")])
+```
+
+
+# Sanity check
+
+```{r}
+# required to run ip_score_long, values dont matter for the IPTW
+data_outcome <- data.frame(id = c(1,2,3,4), time = c(5,5,5,5), status= c(T,T,T,T))
+
+ip_score_long(runif(4), data_outcome, data_long,A ~ L * factor(visit_time), treatment_of_interest = c(0,1,0,1,0), metrics = NULL, visit_times = c(0,1,2,3,4), time_horizon = 5)$ipt$weights
+
+```
+
+
+
+
+
+
+
+
+
+
