@@ -99,7 +99,7 @@ weights_approach3 <- tapply(visit_weight*data_long$visit_compliant, data_long$id
 weights_approach3
 ```
 
-
+In this case the weights between the new approaches are equivalent. Not always the case.
 
 
 

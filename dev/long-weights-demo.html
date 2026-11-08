@@ -466,6 +466,8 @@ visit_weight &lt;- 1  / prob_censor_is_c</code></pre>
 weights_approach3</code></pre>
 <pre><code>##        1        2        3        4 
 ## 0.000000 0.000000 2.037744 0.000000</code></pre>
+<p>In this case the weights between the new approaches are equivalent.
+Not always the case.</p>
 <pre class="r"><code>print(data_long[, c(&quot;id&quot;, &quot;visit_time&quot;, &quot;A&quot;, &quot;visit_compliant&quot;, &quot;has_deviated&quot;,
                     &quot;in_model_building_dataset&quot;, &quot;artificially_censored&quot;)])</code></pre>
 <pre><code>##    id visit_time A visit_compliant has_deviated in_model_building_dataset
