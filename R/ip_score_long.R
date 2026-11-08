@@ -555,8 +555,44 @@ get_iptw_long <- function(data_long, score_treatment, treatment_of_interest,
   }
   # if not:
 
-  ipt_visit <- get_iptw(data_long, score_treatment,
-                        only_weights = FALSE, strip_model = strip_model)
+  #### ugly code ####
+
+  # Get indices of rows in the IPTW training data:
+  # Patient must be compliant to treatment of interest, plus their first
+  # non-compliant row
+  trt_var <- as.character(score_treatment$treatment_column)
+  visit_id <- match(data_long$visit_time, visit_times)
+  required_trt <- treatment_of_interest[visit_id]
+  actual_trt <- data_long[[trt_var]]
+
+  visit_compliant <- required_trt == actual_trt
+  has_deviated <- unlist(tapply(visit_compliant, data_long$id, function(x) { cumsum(!x) >= 1}))
+
+  iptw_training_index <- data.frame("id" = data_long$id, "visit_time" = data_long$visit_time, has_deviated)
+  iptw_training_index <- add_lag_terms(iptw_training_index, "has_deviated", lag = 1, fill = F)
+
+  iptw_training_index$in_model_building_dataset <- !(iptw_training_index$has_deviated_lag_1)
+
+  # fit model on restricted population
+  iptw_model <- glm(formula = score_treatment$propensity_formula,
+      family = "binomial",
+      data = data_long[iptw_training_index$in_model_building_dataset, ])
+
+  # get weights for all visits
+
+  prop_score <- unname(stats::predict(iptw_model, type = "response", newdata = data_long))
+  prob_trt <- ifelse(
+    data_long[[trt_var]] == 1,
+    prop_score,
+    1 - prop_score
+  )
+
+  ipt_visit <- list(iptw_model, prob_trt, "binomial glm")
+
+  # ipt_visit <- get_iptw(data_long, score_treatment,
+  #                       only_weights = FALSE, strip_model = strip_model)
+
+  #### resume regular ugly code ####
 
   # set NA when deviating from trt of interest, and set 1 when trt of interest
   # is NA.

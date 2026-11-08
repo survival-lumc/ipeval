@@ -119,7 +119,7 @@ test_that("ipscore long results vs CF dataset correct", {
     visit_times = 0:4,
     time_horizon = 5,
     treatment_formula = A ~ (A_lag_1 * L),
-    treatment_of_interest = "never",
+    treatment_of_interest = c(1,0,1,0),
     null_model = TRUE,
     metrics = metrics
   )
